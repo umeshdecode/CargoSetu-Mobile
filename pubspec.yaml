@@ -1,0 +1,47 @@
+name: cargo_setu
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  flutter_native_splash: ^2.4.7
+  flutter_launcher_icons: ^0.14.4
+  get: ^4.7.3
+  get_storage: ^2.1.1
+  package_info_plus: ^9.0.0
+  dio: ^5.9.0
+  country_picker: ^2.0.27
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/logo/logo.png
+    - assets/logo/transparent_logo.png
+    - assets/logo/app_icon_without_name.png
+
+# ✅ Native Splash Configuration (ROOT LEVEL)
+flutter_native_splash:
+  color: "#1E88E5"
+  image: assets/logo/logo.png
+  android: true
+  ios: true
+  web: false
+
+# ✅ App Launcher Icon Configuration (ROOT LEVEL)
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/logo/logo.png
+  min_sdk_android: 21
