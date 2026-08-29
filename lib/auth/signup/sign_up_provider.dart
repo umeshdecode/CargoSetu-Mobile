@@ -7,9 +7,6 @@ class SignUpProvider {
   final ApiRequest _api = ApiRequest();
 
   Future<Response> register(SignUpRequest request) {
-    return _api.post(
-      url: Urls.register,
-      data: request.toJson(),
-    );
+    return _api.post(url: Urls.register, data: request.toJson());
   }
 }

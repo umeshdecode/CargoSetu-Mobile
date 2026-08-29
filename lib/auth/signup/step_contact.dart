@@ -1,17 +1,14 @@
 import 'package:cargo_setu/theme/app_theme.dart';
 import 'package:cargo_setu/util/textfield.dart';
-import 'package:flutter/material.dart';
 import 'package:country_picker/country_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class StepContact extends StatefulWidget {
   final Map<String, String> data;
   final VoidCallback onChanged;
 
-  const StepContact(
-      this.data, {
-        super.key,
-        required this.onChanged,
-      });
+  const StepContact(this.data, {super.key, required this.onChanged});
 
   @override
   State<StepContact> createState() => _StepContactState();
@@ -64,9 +61,7 @@ class _StepContactState extends State<StepContact> {
         inputDecoration: InputDecoration(
           hintText: "Search country",
           prefixIcon: Icon(Icons.search, color: AppTheme.colorIconGrey),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
     );
@@ -87,7 +82,10 @@ class _StepContactState extends State<StepContact> {
             labelText: "Mobile Number",
             isRequired: true,
             keyboardType: TextInputType.phone,
-            maxLength: 12,
+            maxLength: 15,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+            ],
             textEditingController: mobileController,
 
             /// COUNTRY CODE PREFIX
@@ -106,9 +104,7 @@ class _StepContactState extends State<StepContact> {
                 ),
                 child: Text(
                   countryCode,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
             ),

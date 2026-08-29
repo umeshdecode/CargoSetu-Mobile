@@ -1,0 +1,220 @@
+import 'dart:developer';
+import 'dart:io';
+
+import 'package:cargo_setu/company/company_service.dart';
+import 'package:cargo_setu/company/model/company_model.dart';
+import 'package:cargo_setu/services/session_service.dart';
+import 'package:cargo_setu/util/constant.dart';
+import 'package:dio/dio.dart';
+import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
+
+/// Controller for company state and operations.
+class CompanyController extends GetxController {
+  final CompanyService _service = CompanyService();
+  final GetStorage _storage = GetStorage();
+
+  /// Current company data
+  final Rx<CompanyModel?> currentCompany = Rx<CompanyModel?>(null);
+
+  /// Whether user has a company
+  final RxBool hasCompany = false.obs;
+
+  /// Loading states
+  final RxBool isLoading = false.obs;
+  final RxBool isSubmitting = false.obs;
+
+  @override
+  void onInit() {
+    super.onInit();
+    final cachedStatus = _storage.read(Constant.companyStatus);
+    if (cachedStatus != null) {
+      hasCompany.value = cachedStatus == true || cachedStatus == 'true';
+    }
+  }
+
+  /// Fetch current user's company from API.
+  Future<bool> fetchCurrentCompany() async {
+    isLoading.value = true;
+    try {
+      final response = await _service.getCurrentCompany();
+      final data = response.data;
+
+      if (response.statusCode == 200 && data != null) {
+        final responseCode = data['responseCode'];
+        final companyData = data['data'];
+
+        if (responseCode == 200 && companyData != null) {
+          final model = CompanyModel.fromJson(
+            companyData is Map<String, dynamic> ? companyData : {},
+          );
+          currentCompany.value = model;
+          hasCompany.value = true;
+          _storage.write(Constant.companyStatus, true);
+
+          // Also notify SessionService
+          if (Get.isRegistered<SessionService>()) {
+            Get.find<SessionService>().setCompanyStatus(true);
+          }
+          return true;
+        }
+      }
+
+      hasCompany.value = false;
+      _storage.write(Constant.companyStatus, false);
+      if (Get.isRegistered<SessionService>()) {
+        Get.find<SessionService>().setCompanyStatus(false);
+      }
+      return false;
+    } on DioException catch (e) {
+      log('❌ Fetch company error: ${e.response?.statusCode} ${e.response?.data}');
+      hasCompany.value = false;
+      _storage.write(Constant.companyStatus, false);
+      return false;
+    } catch (e) {
+      log('❌ Fetch company unknown error: $e');
+      hasCompany.value = false;
+      _storage.write(Constant.companyStatus, false);
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Create a new company with optional logo file.
+  Future<bool> createCompany(
+    CompanyModel company, {
+    File? logoFile,
+    List<AssetUpload>? additionalAssets,
+  }) async {
+    isSubmitting.value = true;
+
+    final assets = <AssetUpload>[];
+    if (logoFile != null) {
+      assets.add(AssetUpload(assetType: 'LOGO', file: logoFile));
+    }
+    if (additionalAssets != null) {
+      assets.addAll(additionalAssets);
+    }
+
+    try {
+      final formData = await company.toFormData(
+        assetUploads: assets.isNotEmpty ? assets : null,
+      );
+
+      final response = await _service.createCompany(formData);
+      final data = response.data;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseCode = data['responseCode'];
+        if (responseCode == 200 || responseCode == 201) {
+          await fetchCurrentCompany();
+          return true;
+        } else {
+          final msg = data['responseMessege'] ?? 'Failed to create company';
+          Get.snackbar('Error', msg, snackPosition: SnackPosition.TOP);
+          return false;
+        }
+      }
+
+      Get.snackbar('Error', 'Failed to create company',
+          snackPosition: SnackPosition.TOP);
+      return false;
+    } on DioException catch (e) {
+      log('❌ Create company error: ${e.response?.statusCode} ${e.response?.data}');
+      final data = e.response?.data;
+      String msg = 'Failed to create company';
+      if (data is Map) {
+        msg = data['responseMessege'] ?? data['message'] ?? msg;
+        if (e.response?.statusCode == 409) {
+          msg = 'A company with this email already exists';
+        }
+      }
+      Get.snackbar('Error', msg, snackPosition: SnackPosition.TOP);
+      return false;
+    } catch (e) {
+      log('❌ Create company unknown error: $e');
+      Get.snackbar('Error', e.toString(), snackPosition: SnackPosition.TOP);
+      return false;
+    } finally {
+      isSubmitting.value = false;
+    }
+  }
+
+  /// Update existing company with optional new logo file.
+  Future<bool> updateCompany(
+    CompanyModel company, {
+    File? logoFile,
+    List<AssetUpload>? additionalAssets,
+  }) async {
+    isSubmitting.value = true;
+
+    final assets = <AssetUpload>[];
+    if (logoFile != null) {
+      assets.add(AssetUpload(assetType: 'LOGO', file: logoFile));
+    }
+    if (additionalAssets != null) {
+      assets.addAll(additionalAssets);
+    }
+
+    try {
+      final formData = await company.toFormData(
+        assetUploads: assets.isNotEmpty ? assets : null,
+      );
+
+      final response = await _service.updateCompany(formData);
+      final data = response.data;
+
+      if (response.statusCode == 200) {
+        final responseCode = data['responseCode'];
+        if (responseCode == 200 || responseCode == 201) {
+          await fetchCurrentCompany();
+          return true;
+        }
+      }
+
+      final msg = data?['responseMessege'] ?? 'Failed to update company';
+      Get.snackbar('Error', msg, snackPosition: SnackPosition.TOP);
+      return false;
+    } on DioException catch (e) {
+      log('❌ Update company error: ${e.response?.data}');
+      final data = e.response?.data;
+      final msg = (data is Map)
+          ? (data['responseMessege'] ?? data['message'] ?? 'Failed to update')
+          : 'Failed to update company';
+      Get.snackbar('Error', msg, snackPosition: SnackPosition.TOP);
+      return false;
+    } catch (e) {
+      log('❌ Update company unknown error: $e');
+      Get.snackbar('Error', e.toString(), snackPosition: SnackPosition.TOP);
+      return false;
+    } finally {
+      isSubmitting.value = false;
+    }
+  }
+
+  /// Delete company (soft delete).
+  Future<bool> deleteCompany(int companyId) async {
+    isSubmitting.value = true;
+    try {
+      final response = await _service.deleteCompany(companyId);
+      if (response.statusCode == 200) {
+        currentCompany.value = null;
+        hasCompany.value = false;
+        _storage.write(Constant.companyStatus, false);
+        if (Get.isRegistered<SessionService>()) {
+          Get.find<SessionService>().setCompanyStatus(false);
+        }
+        return true;
+      }
+      return false;
+    } on DioException catch (e) {
+      log('❌ Delete company error: ${e.response?.data}');
+      Get.snackbar('Error', 'Failed to delete company',
+          snackPosition: SnackPosition.TOP);
+      return false;
+    } finally {
+      isSubmitting.value = false;
+    }
+  }
+}

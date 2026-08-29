@@ -248,6 +248,18 @@ class Constant {
   static const String selectedBrand = "selectedBrand";
   static const String token = "USER_TOKEN";
 
+  // ─── CARGOSETU SESSION KEYS ─────────────────────────────
+  static const String userSession = "USER_SESSION";
+  static const String staffInfo = "STAFF_INFO";
+  static const String companyStatus = "COMPANY_STATUS";
+  static const String companyData = "COMPANY_DATA";
+  static const String refreshTokenKey = "REFRESH_TOKEN";
+  static const String userRoles = "USER_ROLES";
+  static const String userPermissions = "USER_PERMISSIONS";
+  static const String staffId = "STAFF_ID";
+  static const String userName = "USER_NAME_KEY";
+  static const String userEmail = "USER_EMAIL";
+
   static const int MOBILE_NO_LENGTH = 12;
 
   /// Deny leading zero(s)

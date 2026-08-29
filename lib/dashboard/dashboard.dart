@@ -1,63 +1,44 @@
+import 'dart:convert';
+
+import 'package:cargo_setu/company/company_controller.dart';
+import 'package:cargo_setu/routes/app_routes.dart';
+import 'package:cargo_setu/theme/app_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../widgets/app_drawer.dart';
-import '../theme/app_theme.dart';
 
-class DashboardScreen extends StatefulWidget {
+class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
-
-  @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
-}
-
-class _DashboardScreenState extends State<DashboardScreen> {
-  /// AVAILABLE COMPANIES
-  final List<Company> companies = [
-    Company(name: "Umesh Logistics Pvt Ltd", type: "Transport"),
-    Company(name: "SafeHome Packers & Movers", type: "Packers & Movers"),
-  ];
-
-  /// SELECTED COMPANY
-  late Company selectedCompany;
-
-  @override
-  void initState() {
-    super.initState();
-    selectedCompany = companies.first;
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: AppDrawer(),
-      backgroundColor: const Color(0xFFF8FAFC),
+      drawer: const AppDrawer(),
+      backgroundColor: AppColors.bgLight,
       appBar: _appBar(context),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+      body: const SingleChildScrollView(
+        padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ActiveWorkspaceCard(company: selectedCompany),
-            const SizedBox(height: 24),
-            const QuickActionsGrid(),
-            const SizedBox(height: 32),
-            const RecentActivityList(),
+            _ActiveWorkspaceCard(),
+            SizedBox(height: 24),
+            _QuickActionsGrid(),
+            SizedBox(height: 32),
+            _RecentActivityList(),
           ],
         ),
       ),
     );
   }
 
-  ////////////////////////
-  /// APP BAR
-  ////////////////////////
   PreferredSizeWidget _appBar(BuildContext context) {
     return AppBar(
       backgroundColor: Colors.white,
-      elevation: 1,
+      elevation: 0.5,
+      surfaceTintColor: Colors.white,
       toolbarHeight: 60,
       titleSpacing: 0,
-
-      /// DRAWER
       leading: Builder(
         builder: (context) => IconButton(
           icon: const Icon(Icons.menu, color: Colors.black),
@@ -66,9 +47,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           },
         ),
       ),
-
-      title: Row(
-        children: const [
+      title: const Row(
+        children: [
           Text(
             "Cargo",
             style: TextStyle(
@@ -79,277 +59,241 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Text(
             "Setu",
             style: TextStyle(
-              color: Colors.orange,
+              color: AppColors.accentOrange,
               fontWeight: FontWeight.w700,
             ),
           ),
         ],
       ),
-
       actions: [
         IconButton(
           icon: const Icon(Icons.notifications_none, color: Colors.black),
           onPressed: () {},
         ),
-
-        /// PROFILE AVATAR
         Padding(
           padding: const EdgeInsets.only(right: 12),
-          child: IconButton(
-            onPressed: () {
-              _showAccountSwitcher(context);
-            },
-            icon: CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.blueAccent.shade200,
-              child: Text(
-                selectedCompany.name.substring(0, 1).toUpperCase(),
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+          child: Obx(() {
+            final companyCtrl = Get.find<CompanyController>();
+            final company = companyCtrl.currentCompany.value;
+            final logo = company?.logoUrlOrBase64;
+            final initial = company?.companyName.isNotEmpty == true
+                ? company!.companyName[0].toUpperCase()
+                : 'C';
+
+            return IconButton(
+              onPressed: () => Get.toNamed(AppRoutes.companyProfile),
+              icon: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.primaryBlue,
+                  border: Border.all(
+                    color: AppColors.primaryBlue.withValues(alpha: 0.2),
+                    width: 1.5,
+                  ),
+                ),
+                child: ClipOval(
+                  child: (logo != null && logo.isNotEmpty)
+                      ? _buildLogoImage(logo)
+                      : Center(
+                          child: Text(
+                            initial,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
                 ),
               ),
-            ),
-          ),
-
+            );
+          }),
         ),
       ],
     );
   }
 
-  ////////////////////////
-  /// ACCOUNT SWITCHER
-  ////////////////////////
-  void _showAccountSwitcher(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true, // important for safe area + future growth
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) {
-        return SafeArea( // ✅ THIS FIXES OVERLAP WITH SYSTEM BUTTONS
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                /// DRAG HANDLE (nice UX)
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-
-                const Text(
-                  "Select Company",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                /// COMPANY LIST
-                ...companies.map(
-                      (company) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.business),
-                    title: Text(company.name),
-                    trailing: company == selectedCompany
-                        ? const Icon(Icons.check, color: Colors.green)
-                        : null,
-                    onTap: () {
-                      setState(() {
-                        selectedCompany = company;
-                      });
-                      Navigator.pop(context);
-                    },
-                  ),
-                ),
-
-                const Divider(height: 32),
-
-                /// ADD MORE ACCOUNT
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.person_add),
-                  title: const Text(
-                    "Add another account",
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    // TODO: Navigate to add account / login screen
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+  static Widget _buildLogoImage(String source) {
+    if (source.startsWith('http://') || source.startsWith('https://')) {
+      return Image.network(
+        source,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) =>
+            const Icon(Icons.business, size: 18, color: Colors.white),
+      );
+    }
+    try {
+      final cleanBase64 =
+          source.contains(',') ? source.split(',').last : source;
+      final bytes = base64Decode(cleanBase64);
+      return Image.memory(bytes, fit: BoxFit.cover);
+    } catch (_) {
+      return const Icon(Icons.business, size: 18, color: Colors.white);
+    }
   }
 }
 
 ////////////////////////
-/// COMPANY MODEL
+/// ACTIVE WORKSPACE CARD — reads from CompanyController
 ////////////////////////
-class Company {
-  final String name;
-  final String type;
-  final bool isActive;
-
-  Company({
-    required this.name,
-    required this.type,
-    this.isActive = true,
-  });
-}
-
-////////////////////////
-/// ACTIVE WORKSPACE CARD
-////////////////////////
-class ActiveWorkspaceCard extends StatelessWidget {
-  final Company company;
-
-  const ActiveWorkspaceCard({
-    super.key,
-    required this.company,
-  });
+class _ActiveWorkspaceCard extends StatelessWidget {
+  const _ActiveWorkspaceCard();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: const Border(
-          left: BorderSide(color: Colors.orange, width: 4),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
+    return Obx(() {
+      final companyCtrl = Get.find<CompanyController>();
+      final company = companyCtrl.currentCompany.value;
+
+      final name = company?.companyName ?? 'Your Company';
+      final email = company?.companyEmail ?? '';
+      final logo = company?.logoUrlOrBase64;
+
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: const Border(
+            left: BorderSide(color: AppColors.accentOrange, width: 4),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          /// TOP ROW (LOGO + INFO)
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.business, color: Colors.blue),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      company.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            /// TOP ROW (LOGO + INFO)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryBlueLight,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: AppColors.primaryBlue.withValues(alpha: 0.15),
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        _Chip(
-                          text: company.type,
-                          bg: const Color(0xFFF3F4F6),
-                          color: Colors.black,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(13),
+                    child: (logo != null && logo.isNotEmpty)
+                        ? DashboardScreen._buildLogoImage(logo)
+                        : const Icon(
+                            Icons.business_rounded,
+                            color: AppColors.primaryBlue,
+                            size: 28,
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
                         ),
-                        const SizedBox(width: 6),
-                        const _Chip(
-                          text: "● Active",
-                          bg: Color(0xFFE6F9EC),
-                          color: Colors.green,
+                      ),
+                      if (email.isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          email,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ],
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      Row(
+                        children: const [
+                          _Chip(
+                            text: 'Transport',
+                            bg: Color(0xFFF1F5F9),
+                            color: Color(0xFF334155),
+                          ),
+                          SizedBox(width: 6),
+                          _Chip(
+                            text: '● Active',
+                            bg: Color(0xFFE6F9EC),
+                            color: AppColors.success,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
 
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          /// ACTION BUTTONS (RESTORED ✅)
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    // TODO: Manage Company
-                  },
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: Colors.grey.shade300),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+            /// ACTION BUTTONS
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Get.toNamed(AppRoutes.companyProfile),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFFCBD5E1)),
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                  ),
-                  child: const Text(
-                    "Manage Company",
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    // TODO: Open Dashboard
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E40AF),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text(
-                    "Open Dashboard",
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                    child: const Text(
+                      "Manage Company",
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0F172A),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {},
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryBlueDark,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      "Open Dashboard",
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    });
   }
 }
 
@@ -367,7 +311,7 @@ class _Chip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(8),
@@ -375,7 +319,7 @@ class _Chip extends StatelessWidget {
       child: Text(
         text,
         style: TextStyle(
-          fontSize: 12,
+          fontSize: 11.5,
           fontWeight: FontWeight.w600,
           color: color,
         ),
@@ -387,8 +331,8 @@ class _Chip extends StatelessWidget {
 ////////////////////////
 /// QUICK ACTIONS GRID
 ////////////////////////
-class QuickActionsGrid extends StatelessWidget {
-  const QuickActionsGrid({super.key});
+class _QuickActionsGrid extends StatelessWidget {
+  const _QuickActionsGrid();
 
   @override
   Widget build(BuildContext context) {
@@ -397,15 +341,19 @@ class QuickActionsGrid extends StatelessWidget {
       children: [
         const Text(
           "Quick Actions",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         GridView.builder(
           shrinkWrap: true,
-          primary: false, // ✅ VERY IMPORTANT
+          primary: false,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: actions.length,
-          padding: const EdgeInsets.only(bottom: 8), // 👈 safety padding
+          itemCount: _actions.length,
+          padding: const EdgeInsets.only(bottom: 8),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             crossAxisSpacing: 12,
@@ -413,33 +361,40 @@ class QuickActionsGrid extends StatelessWidget {
             childAspectRatio: 1,
           ),
           itemBuilder: (_, index) {
-            final item = actions[index];
+            final item = _actions[index];
             return Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CircleAvatar(
                     radius: 26,
-                    backgroundColor: item.color.withOpacity(0.15),
+                    backgroundColor: item.color.withValues(alpha: 0.12),
                     child: Icon(item.icon, color: item.color),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     item.title,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13.5,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     item.subtitle,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -454,8 +409,8 @@ class QuickActionsGrid extends StatelessWidget {
 ////////////////////////
 /// RECENT ACTIVITY
 ////////////////////////
-class RecentActivityList extends StatelessWidget {
-  const RecentActivityList({super.key});
+class _RecentActivityList extends StatelessWidget {
+  const _RecentActivityList();
 
   @override
   Widget build(BuildContext context) {
@@ -464,21 +419,25 @@ class RecentActivityList extends StatelessWidget {
       children: [
         const Text(
           "Recent Activity",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
         ),
         const SizedBox(height: 12),
-        ...activities.map(
-              (a) => Container(
+        ..._activities.map(
+          (a) => Container(
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade200),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.history, size: 20),
+                const Icon(Icons.history, size: 20, color: AppColors.textSecondary),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -486,19 +445,23 @@ class RecentActivityList extends StatelessWidget {
                     children: [
                       Text(
                         a.title,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13.5,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                       Text(
                         a.time,
                         style: const TextStyle(
                           fontSize: 12,
-                          color: Colors.grey,
+                          color: AppColors.textSecondary,
                         ),
                       ),
                     ],
                   ),
                 ),
-                StatusBadge(status: a.status),
+                _StatusBadge(status: a.status),
               ],
             ),
           ),
@@ -508,23 +471,23 @@ class RecentActivityList extends StatelessWidget {
   }
 }
 
-class StatusBadge extends StatelessWidget {
+class _StatusBadge extends StatelessWidget {
   final String status;
 
-  const StatusBadge({super.key, required this.status});
+  const _StatusBadge({required this.status});
 
   @override
   Widget build(BuildContext context) {
     final color = status == "Paid"
-        ? Colors.green
+        ? AppColors.success
         : status == "Pending"
-        ? Colors.blue
-        : Colors.orange;
+            ? AppColors.info
+            : AppColors.accentOrange;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
@@ -542,41 +505,46 @@ class StatusBadge extends StatelessWidget {
 ////////////////////////
 /// DATA
 ////////////////////////
-class DashboardAction {
+class _DashboardAction {
   final String title;
   final String subtitle;
   final IconData icon;
   final Color color;
 
-  DashboardAction(this.title, this.subtitle, this.icon, this.color);
+  _DashboardAction(this.title, this.subtitle, this.icon, this.color);
 }
 
-class ActivityItem {
+class _ActivityItem {
   final String title;
   final String time;
   final String status;
 
-  ActivityItem(this.title, this.time, this.status);
+  _ActivityItem(this.title, this.time, this.status);
 }
 
-final actions = [
-  DashboardAction("Manage Staff", "Team roles", Icons.people, Colors.blue),
-  DashboardAction("Vehicles", "Fleet", Icons.local_shipping, Colors.blue),
-  DashboardAction("Create Customer", "Register client", Icons.person_add, Colors.blue),
-  DashboardAction("Generate Bilty", "LR note", Icons.receipt, Colors.orange),
-  DashboardAction("Quotation", "Estimate costs", Icons.calculate, Colors.orange),
-  DashboardAction("Invoicing", "Billing", Icons.attach_money, Colors.orange),
-  DashboardAction(
+final _actions = [
+  _DashboardAction(
+      "Manage Staff", "Team roles", Icons.people_outline, AppColors.primaryBlue),
+  _DashboardAction("Vehicles", "Fleet", Icons.local_shipping_outlined,
+      AppColors.primaryBlue),
+  _DashboardAction("Create Customer", "Register client", Icons.person_add_outlined,
+      AppColors.primaryBlue),
+  _DashboardAction("Generate Bilty", "LR note", Icons.receipt_outlined,
+      AppColors.accentOrange),
+  _DashboardAction("Quotation", "Estimate costs", Icons.calculate_outlined,
+      AppColors.accentOrange),
+  _DashboardAction("Invoicing", "Billing", Icons.attach_money_outlined,
+      AppColors.accentOrange),
+  _DashboardAction(
     "Other Type Bills",
     "Packaging list/others",
-    Icons.description,
-    Colors.orange,
+    Icons.description_outlined,
+    AppColors.accentOrange,
   ),
 ];
 
-
-final activities = [
-  ActivityItem("Bilty: BT-9902", "10 mins ago", "Generated"),
-  ActivityItem("Invoice: INV-441", "2 hrs ago", "Paid"),
-  ActivityItem("Quotation: QT-102", "5 hrs ago", "Pending"),
+final _activities = [
+  _ActivityItem("Bilty: BT-9902", "10 mins ago", "Generated"),
+  _ActivityItem("Invoice: INV-441", "2 hrs ago", "Paid"),
+  _ActivityItem("Quotation: QT-102", "5 hrs ago", "Pending"),
 ];

@@ -5,11 +5,7 @@ class StepAccount extends StatefulWidget {
   final Map data;
   final VoidCallback onChanged;
 
-  const StepAccount(
-      this.data, {
-        super.key,
-        required this.onChanged,
-      });
+  const StepAccount(this.data, {super.key, required this.onChanged});
 
   @override
   State<StepAccount> createState() => _StepAccountState();
@@ -23,12 +19,13 @@ class _StepAccountState extends State<StepAccount> {
   @override
   void initState() {
     super.initState();
-    firstNameController =
-        TextEditingController(text: widget.data['firstName'] ?? "");
-    lastNameController =
-        TextEditingController(text: widget.data['lastName'] ?? "");
-    emailController =
-        TextEditingController(text: widget.data['email'] ?? "");
+    firstNameController = TextEditingController(
+      text: widget.data['firstName'] ?? "",
+    );
+    lastNameController = TextEditingController(
+      text: widget.data['lastName'] ?? "",
+    );
+    emailController = TextEditingController(text: widget.data['email'] ?? "");
   }
 
   @override
@@ -52,8 +49,7 @@ class _StepAccountState extends State<StepAccount> {
               widget.data['firstName'] = v;
               widget.onChanged();
             },
-            onTextValidator: (v) =>
-            v == null || v.isEmpty ? "Required" : null,
+            onTextValidator: (v) => v == null || v.isEmpty ? "Required" : null,
           ),
 
           const SizedBox(height: 16),
@@ -66,8 +62,7 @@ class _StepAccountState extends State<StepAccount> {
               widget.data['lastName'] = v;
               widget.onChanged();
             },
-            onTextValidator: (v) =>
-            v == null || v.isEmpty ? "Required" : null,
+            onTextValidator: (v) => v == null || v.isEmpty ? "Required" : null,
           ),
 
           const SizedBox(height: 16),

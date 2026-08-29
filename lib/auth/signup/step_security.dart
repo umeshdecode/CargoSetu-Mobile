@@ -5,11 +5,7 @@ class StepSecurity extends StatefulWidget {
   final Map<String, String> data;
   final VoidCallback onChanged;
 
-  const StepSecurity(
-      this.data, {
-        super.key,
-        required this.onChanged,
-      });
+  const StepSecurity(this.data, {super.key, required this.onChanged});
 
   @override
   State<StepSecurity> createState() => _StepSecurityState();
@@ -25,10 +21,12 @@ class _StepSecurityState extends State<StepSecurity> {
   @override
   void initState() {
     super.initState();
-    passwordController =
-        TextEditingController(text: widget.data['password'] ?? "");
-    confirmPasswordController =
-        TextEditingController(text: widget.data['password'] ?? "");
+    passwordController = TextEditingController(
+      text: widget.data['password'] ?? "",
+    );
+    confirmPasswordController = TextEditingController(
+      text: widget.data['password'] ?? "",
+    );
 
     password = passwordController.text;
     confirmPassword = confirmPasswordController.text;
@@ -53,8 +51,7 @@ class _StepSecurityState extends State<StepSecurity> {
     return Colors.red;
   }
 
-  bool get isMatch =>
-      confirmPassword.isNotEmpty && password == confirmPassword;
+  bool get isMatch => confirmPassword.isNotEmpty && password == confirmPassword;
 
   @override
   Widget build(BuildContext context) {
@@ -68,6 +65,7 @@ class _StepSecurityState extends State<StepSecurity> {
             labelText: "Password",
             isRequired: true,
             obscureText: true,
+            maxLength: 128,
             textEditingController: passwordController, // ✅ FIX
             onChanged: (v) {
               setState(() {
@@ -104,6 +102,7 @@ class _StepSecurityState extends State<StepSecurity> {
             labelText: "Confirm Password",
             isRequired: true,
             obscureText: true,
+            maxLength: 128,
             textEditingController: confirmPasswordController, // ✅ FIX
             onChanged: (v) {
               setState(() {

@@ -1,5 +1,6 @@
 import 'package:cargo_setu/routes/app_pages.dart';
 import 'package:cargo_setu/routes/app_routes.dart';
+import 'package:cargo_setu/services/session_service.dart';
 import 'package:cargo_setu/theme/theme_controller.dart';
 import 'package:cargo_setu/util/constant.dart';
 import 'package:flutter/material.dart';
@@ -9,7 +10,11 @@ import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await GetStorage.init(); // ✅ REQUIRED
+  await GetStorage.init();
+
+  // Initialize core services
+  Get.put(SessionService());
+
   runApp(const CargoSetuApp());
 }
 
@@ -21,7 +26,7 @@ class CargoSetuApp extends StatelessWidget {
     final themeController = Get.put(ThemeController());
 
     return Obx(
-          () => GetMaterialApp(
+      () => GetMaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Cargo Setu',
 
@@ -39,10 +44,7 @@ class CargoSetuApp extends StatelessWidget {
 }
 
 ////////////////////////////////////////////////
-/// SPLASH SCREEN (TOKEN CHECK)
-////////////////////////////////////////////////
-////////////////////////////////////////////////
-/// SPLASH SCREEN (NEW DESIGN + TOKEN CHECK)
+/// SPLASH SCREEN (TOKEN CHECK + COMPANY CHECK)
 ////////////////////////////////////////////////
 class FlutterSplashScreen extends StatefulWidget {
   const FlutterSplashScreen({super.key});
@@ -60,10 +62,10 @@ class _FlutterSplashScreenState extends State<FlutterSplashScreen>
   void initState() {
     super.initState();
 
-    /// Loading animation
+    /// Loading animation (3 seconds)
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 20),
+      duration: const Duration(seconds: 3),
     );
 
     _progress = Tween<double>(begin: 0, end: 1).animate(_controller);
@@ -73,7 +75,7 @@ class _FlutterSplashScreenState extends State<FlutterSplashScreen>
   }
 
   void _navigateToNext() async {
-    await Future.delayed(const Duration(seconds: 20));
+    await Future.delayed(const Duration(seconds: 3));
 
     final storage = GetStorage();
     final token = storage.read(Constant.token);

@@ -40,21 +40,19 @@ class StepIndicator extends StatelessWidget {
               child: isCompleted
                   ? const Icon(Icons.check, size: 16, color: Colors.white)
                   : Text(
-                "${stepIndex + 1}",
-                style: const TextStyle(color: Colors.white),
-              ),
+                      "${stepIndex + 1}",
+                      style: const TextStyle(color: Colors.white),
+                    ),
             ),
             const SizedBox(height: 6),
             Text(
               ["Account", "Contact", "Address", "Security"][stepIndex],
               style: TextStyle(
                 fontSize: 12,
-                fontWeight:
-                isActive ? FontWeight.w600 : FontWeight.normal,
-                color:
-                isActive ? Colors.blue : Colors.grey,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                color: isActive ? Colors.blue : Colors.grey,
               ),
-            )
+            ),
           ],
         );
       }),

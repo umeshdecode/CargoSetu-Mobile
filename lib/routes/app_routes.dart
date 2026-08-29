@@ -1,5 +1,10 @@
+/// All named routes for the CargoSetu mobile app.
 class AppRoutes {
   static const splash = '/';
   static const login = '/login';
+  static const signup = '/signup';
   static const dashboard = '/dashboard';
+  static const companyCreate = '/company-create';
+  static const companyProfile = '/company-profile';
+  static const companyEdit = '/company-edit';
 }

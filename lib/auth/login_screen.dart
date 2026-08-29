@@ -16,69 +16,73 @@ class LoginScreen extends StatelessWidget {
     Get.put(LoginController());
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       resizeToAvoidBottomInset: true,
-      body: Stack(
-        children: [
-          Container(
-            height: height * 0.8,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFFF8FAFC),
-                  Color(0xFFEFF6FF),
-                ],
-              ),
-            ),
-          ),
-
-          /// CARD
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              height: height * 0.98,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+      body: SizedBox(
+        height: height,
+        child: Stack(
+          children: [
+            Container(
+              height: height * 0.8,
               decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(40),
-                  topRight: Radius.circular(40),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFFF8FAFC), Color(0xFFEFF6FF)],
                 ),
               ),
-              child: SafeArea(
-                top: false,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.only(bottom: 20),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 80),
+            ),
 
-                      /// LOGO
-                      Image.asset(
-                        height: 150,width: 150,
-                        'assets/logo/transparent_logo.png',
-                        fit: BoxFit.contain,
-                      ),
+            /// CARD
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 20,
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(40),
+                    topRight: Radius.circular(40),
+                  ),
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 80),
 
-                      const Text(
-                        "Smart Logistics, Seamless Delivery",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
+                        /// LOGO
+                        Image.asset(
+                          height: 150,
+                          width: 150,
+                          'assets/logo/transparent_logo.png',
+                          fit: BoxFit.contain,
                         ),
-                      ),
 
-                      const SizedBox(height: 20),
+                        const Text(
+                          "Smart Logistics, Seamless Delivery",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
 
-                      const LoginTabsCard(),
-                    ],
+                        const SizedBox(height: 20),
+
+                        const LoginTabsCard(),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -88,79 +92,99 @@ class LoginScreen extends StatelessWidget {
 /// ========================== LOGIN TABS =================================
 /// =======================================================================
 
-class LoginTabsCard extends StatelessWidget {
+class LoginTabsCard extends StatefulWidget {
   const LoginTabsCard({super.key});
 
   @override
+  State<LoginTabsCard> createState() => _LoginTabsCardState();
+}
+
+class _LoginTabsCardState extends State<LoginTabsCard>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging ||
+          _tabController.index != _tabController.previousIndex) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          /// TAB BAR
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.blue),
-            ),
-            padding: const EdgeInsets.all(4),
-            child: const TabBar(
-              dividerColor: Colors.transparent,
-              indicatorSize: TabBarIndicatorSize.tab,
-              indicator: BoxDecoration(
-                color: Colors.blue,
-                borderRadius: BorderRadius.all(Radius.circular(10)),
-              ),
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.blue,
-              tabs: [
-                Tab(text: "Mobile"),
-                Tab(text: "Email"),
-              ],
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        /// TAB BAR
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.blue),
           ),
+          padding: const EdgeInsets.all(4),
+          child: TabBar(
+            controller: _tabController,
+            dividerColor: Colors.transparent,
+            indicatorSize: TabBarIndicatorSize.tab,
+            indicator: const BoxDecoration(
+              color: Colors.blue,
+              borderRadius: BorderRadius.all(Radius.circular(10)),
+            ),
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.blue,
+            tabs: const [
+              Tab(text: "Mobile"),
+              Tab(text: "Email"),
+            ],
+          ),
+        ),
 
-          const SizedBox(height: 20),
+        const SizedBox(height: 20),
 
-          SizedBox(
-            height: 380,
-            child: TabBarView(
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          child: _tabController.index == 0 ? _MobileOtpTab() : _EmailLoginTab(),
+        ),
+
+        const SizedBox(height: 24),
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SignUpScreen()),
+            );
+          },
+          child: RichText(
+            textAlign: TextAlign.center,
+            text: const TextSpan(
+              text: "Don’t have an account? ",
+              style: TextStyle(color: Colors.black54),
               children: [
-                _MobileOtpTab(),
-                _EmailLoginTab(),
+                TextSpan(
+                  text: "Create one",
+                  style: TextStyle(
+                    color: Colors.blue,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),
-
-          const SizedBox(height: 40),
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SignUpScreen()),
-              );
-            },
-            child: RichText(
-              textAlign: TextAlign.center,
-              text: const TextSpan(
-                text: "Don’t have an account? ",
-                style: TextStyle(color: Colors.black54),
-                children: [
-                  TextSpan(
-                    text: "Create one",
-                    style: TextStyle(
-                      color: Colors.blue,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -207,16 +231,14 @@ class _MobileOtpTab extends StatelessWidget {
                 border: Border(
                   right: BorderSide(
                     color: Colors.grey.shade300, // 👈 divider color
-                    width: 2,                    // 👈 divider thickness
+                    width: 2, // 👈 divider thickness
                   ),
                 ),
               ),
               child: Obx(
-                    () => Text(
+                () => Text(
                   controller.countryCode.value,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -236,9 +258,7 @@ class _MobileOtpTab extends StatelessWidget {
           child: ElevatedButton(
             onPressed: () {
               // TODO: controller.sendOtp();
-              debugPrint(
-                "SEND OTP => ${controller.fullMobileNumber}",
-              );
+              debugPrint("SEND OTP => ${controller.fullMobileNumber}");
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
@@ -260,7 +280,6 @@ class _MobileOtpTab extends StatelessWidget {
   }
 }
 
-
 /// =======================================================================
 /// ========================= EMAIL TAB ===================================
 /// =======================================================================
@@ -270,93 +289,88 @@ class _EmailLoginTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          /// EMAIL LABEL
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
-              child: CustomText(
-                title: "Email Address *",
-                colors: AppTheme.colorBlack,
-                fontSize: AppTheme.small,
-                fontWeight: FontWeight.w500,
-              ),
+    return Column(
+      children: [
+        /// EMAIL LABEL
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+            child: CustomText(
+              title: "Email Address *",
+              colors: AppTheme.colorBlack,
+              fontSize: AppTheme.small,
+              fontWeight: FontWeight.w500,
             ),
           ),
+        ),
 
-          const SizedBox(height: 8),
+        const SizedBox(height: 8),
 
-          CoustomTextField(
-            labelText: "example@email.com",
-            keyboardType: TextInputType.emailAddress,
-            textEditingController: controller.userNameController,
-            onChanged: (_) {},
-            onTextValidator: (v) =>
-            v == null || !v.contains('@') ? "Invalid email" : null,
-          ),
+        CoustomTextField(
+          labelText: "example@email.com",
+          keyboardType: TextInputType.emailAddress,
+          textEditingController: controller.userNameController,
+          onChanged: (_) {},
+          onTextValidator: (v) =>
+              v == null || !v.contains('@') ? "Invalid email" : null,
+        ),
 
-          const SizedBox(height: 16),
+        const SizedBox(height: 16),
 
-          /// PASSWORD LABEL
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
-              child: CustomText(
-                title: "Password *",
-                colors: AppTheme.colorBlack,
-                fontSize: AppTheme.small,
-                fontWeight: FontWeight.w500,
-              ),
+        /// PASSWORD LABEL
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+            child: CustomText(
+              title: "Password *",
+              colors: AppTheme.colorBlack,
+              fontSize: AppTheme.small,
+              fontWeight: FontWeight.w500,
             ),
           ),
+        ),
 
-          const SizedBox(height: 8),
+        const SizedBox(height: 8),
 
-          CoustomTextField(
-            labelText: "Enter password",
-            obscureText: true,
-            textEditingController: controller.passwordController,
-            onChanged: (_) {},
-            onTextValidator: (v) =>
-            v == null || v.isEmpty ? "Password required" : null,
-          ),
+        CoustomTextField(
+          labelText: "Enter password",
+          obscureText: true,
+          textEditingController: controller.passwordController,
+          onChanged: (_) {},
+          onTextValidator: (v) =>
+              v == null || v.isEmpty ? "Password required" : null,
+        ),
 
-          const SizedBox(height: 20),
+        const SizedBox(height: 24),
 
-          const _LoginButton(title: "LOGIN"),
-
-          const SizedBox(height: 16),
-
-          Row(
-            children: [
-              Expanded(child: Divider(color: Colors.grey.shade300)),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Text("OR"),
+        Row(
+          children: [
+            const Expanded(child: _LoginButton(title: "LOGIN")),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.g_mobiledata, size: 28),
+                label: const Text("Google"),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  side: BorderSide(color: Colors.grey.shade400),
+                ),
               ),
-              Expanded(child: Divider(color: Colors.grey.shade300)),
-            ],
-          ),
+            ),
+          ],
+        ),
 
-          const SizedBox(height: 16),
-
-          OutlinedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.g_mobiledata, size: 28),
-            label: const Text("Sign in with Google"),
-          ),
-
-          const SizedBox(height: 20), // 👈 important
-        ],
-      ),
+        const SizedBox(height: 20),
+      ],
     );
   }
 }
-
 
 /// =======================================================================
 /// ========================= LOGIN BUTTON ================================
@@ -373,34 +387,37 @@ class _LoginButton extends StatelessWidget {
     return SizedBox(
       height: 48,
       child: Obx(
-            () => ElevatedButton(
-          onPressed: controller.isLoading.value
+        () => ElevatedButton(
+          onPressed:
+              (!controller.isEmailLoginEnabled.value ||
+                  controller.isLoading.value)
               ? null
               : () {
-            controller.login();
-          },
+                  controller.login();
+                },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.blue,
+            disabledBackgroundColor: Colors.grey.shade400,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
           ),
           child: controller.isLoading.value
               ? const SizedBox(
-            height: 22,
-            width: 22,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: Colors.white,
-            ),
-          )
+                  height: 22,
+                  width: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
               : Text(
-            title,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
-          ),
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
         ),
       ),
     );

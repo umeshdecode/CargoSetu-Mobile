@@ -1,7 +1,7 @@
-import 'dart:convert';
+import 'package:cargo_setu/services/location_service.dart';
 import 'package:cargo_setu/util/textfield.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter/services.dart';
 
 class StepAddress extends StatefulWidget {
   final Map<String, String> data;
@@ -14,7 +14,7 @@ class StepAddress extends StatefulWidget {
 }
 
 class _StepAddressState extends State<StepAddress> {
-  List cities = [];
+  List<LocationSuggestion> suggestions = [];
   bool loading = false;
 
   late final TextEditingController cityController;
@@ -26,8 +26,9 @@ class _StepAddressState extends State<StepAddress> {
     super.initState();
     cityController = TextEditingController(text: widget.data['city'] ?? "");
     stateController = TextEditingController(text: widget.data['state'] ?? "");
-    pincodeController =
-        TextEditingController(text: widget.data['pincode'] ?? "");
+    pincodeController = TextEditingController(
+      text: widget.data['pincode'] ?? "",
+    );
   }
 
   @override
@@ -39,34 +40,24 @@ class _StepAddressState extends State<StepAddress> {
   }
 
   Future<void> searchCity(String query) async {
-    if (query.length < 3) {
-      setState(() => cities.clear());
+    if (query.trim().length < 2) {
+      setState(() => suggestions.clear());
       return;
     }
 
     setState(() => loading = true);
 
     try {
-      final res = await http.get(
-        Uri.parse(
-          "https://photon.komoot.io/api/?q=${Uri.encodeComponent(query)}",
-        ),
-        headers: const {
-          "Accept": "application/json",
-          "User-Agent": "CargoSetuApp/1.0",
-        },
-      );
-
-      if (res.statusCode == 200) {
-        final decoded = jsonDecode(res.body);
+      final list = await LocationService.searchLocations(query);
+      if (mounted) {
         setState(() {
-          cities = decoded['features'] ?? [];
+          suggestions = list;
         });
       }
     } catch (_) {
-      setState(() => cities.clear());
+      if (mounted) setState(() => suggestions.clear());
     } finally {
-      setState(() => loading = false);
+      if (mounted) setState(() => loading = false);
     }
   }
 
@@ -77,11 +68,11 @@ class _StepAddressState extends State<StepAddress> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          /// CITY
+          /// CITY with Autocomplete Search
           CoustomTextField(
             labelText: "City",
             isRequired: true,
-            textEditingController: cityController, // ✅ FIX
+            textEditingController: cityController,
             onChanged: (v) {
               widget.data['city'] = v;
               widget.data['state'] = "";
@@ -90,40 +81,85 @@ class _StepAddressState extends State<StepAddress> {
               searchCity(v);
             },
             onTextValidator: (v) =>
-            v == null || v.isEmpty ? "City is required" : null,
+                v == null || v.isEmpty ? "City is required" : null,
           ),
 
-          /// LOADING
+          /// LOADING INDICATOR
           if (loading)
             const Padding(
-              padding: EdgeInsets.all(8),
-              child: CircularProgressIndicator(strokeWidth: 2),
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
             ),
 
-          /// DROPDOWN LIST
-          if (cities.isNotEmpty)
+          /// DROPDOWN SUGGESTIONS LIST
+          if (suggestions.isNotEmpty)
             Container(
               margin: const EdgeInsets.only(top: 6),
               constraints: const BoxConstraints(maxHeight: 200),
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
                 color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              child: ListView.builder(
+              child: ListView.separated(
                 shrinkWrap: true,
-                itemCount: cities.length,
+                padding: EdgeInsets.zero,
+                itemCount: suggestions.length,
+                separatorBuilder: (_, __) =>
+                    Divider(height: 1, color: Colors.grey.shade200),
                 itemBuilder: (_, index) {
-                  final p = cities[index]['properties'];
+                  final item = suggestions[index];
                   return ListTile(
-                    title: Text(p['name'] ?? ''),
-                    subtitle: Text(p['state'] ?? ''),
+                    dense: true,
+                    leading: const Icon(Icons.location_on_outlined,
+                        size: 18, color: Color(0xFF2563EB)),
+                    title: Text(
+                      item.city.isNotEmpty ? item.city : item.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                    subtitle: Text(
+                      [
+                        if (item.state.isNotEmpty) item.state,
+                        if (item.country.isNotEmpty) item.country,
+                      ].join(', '),
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
                     onTap: () {
-                      cityController.text = p['name'] ?? '';
-                      stateController.text = p['state'] ?? '';
-                      widget.data['city'] = cityController.text;
-                      widget.data['state'] = stateController.text;
-                      cities.clear();
+                      final selectedCity =
+                          item.city.isNotEmpty ? item.city : item.name;
+                      cityController.text = selectedCity;
+                      stateController.text = item.state;
+                      widget.data['city'] = selectedCity;
+                      widget.data['state'] = item.state;
+                      if (item.country.isNotEmpty) {
+                        widget.data['country'] = item.country;
+                      }
+                      if (item.postcode != null &&
+                          item.postcode!.isNotEmpty &&
+                          item.postcode!.length == 6) {
+                        pincodeController.text = item.postcode!;
+                        widget.data['pincode'] = item.postcode!;
+                      }
+                      suggestions.clear();
                       widget.onChanged();
                       setState(() {});
                     },
@@ -139,10 +175,10 @@ class _StepAddressState extends State<StepAddress> {
             labelText: "State",
             isRequired: true,
             readOnly: true,
-            textEditingController: stateController, // ✅ FIX
+            textEditingController: stateController,
             onChanged: (_) {},
             onTextValidator: (v) =>
-            v == null || v.isEmpty ? "State is required" : null,
+                v == null || v.isEmpty ? "State is required" : null,
           ),
 
           const SizedBox(height: 16),
@@ -153,7 +189,10 @@ class _StepAddressState extends State<StepAddress> {
             isRequired: true,
             keyboardType: TextInputType.number,
             maxLength: 6,
-            textEditingController: pincodeController, // ✅ FIX
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+            ],
+            textEditingController: pincodeController,
             onChanged: (v) {
               widget.data['pincode'] = v;
               widget.onChanged();
