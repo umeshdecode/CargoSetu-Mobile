@@ -9,13 +9,31 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 /// Company profile view screen — displays all company details and brand logo.
-class CompanyProfileScreen extends StatelessWidget {
+class CompanyProfileScreen extends StatefulWidget {
   const CompanyProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final companyCtrl = Get.find<CompanyController>();
+  State<CompanyProfileScreen> createState() => _CompanyProfileScreenState();
+}
 
+class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
+  late final CompanyController companyCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    companyCtrl = Get.isRegistered<CompanyController>()
+        ? Get.find<CompanyController>()
+        : Get.put(CompanyController());
+
+    // Fetch fresh company data from server
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      companyCtrl.fetchCurrentCompany();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bgLight,
       appBar: AppBar(
@@ -49,270 +67,349 @@ class CompanyProfileScreen extends StatelessWidget {
       ),
       body: Obx(() {
         final company = companyCtrl.currentCompany.value;
+        final isLoading = companyCtrl.isLoading.value;
 
-        if (companyCtrl.isLoading.value) {
+        // If no company in memory AND actively loading initial fetch
+        if (company == null && isLoading) {
           return const Center(
-            child: CircularProgressIndicator(
-              color: AppColors.primaryBlue,
-            ),
-          );
-        }
-
-        if (company == null) {
-          return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.business_outlined,
-                    size: 64, color: AppColors.textHint),
-                const SizedBox(height: 16),
-                const Text(
-                  'No company data available',
+                CircularProgressIndicator(color: AppColors.primaryBlue),
+                SizedBox(height: 16),
+                Text(
+                  'Loading company profile...',
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
                     color: AppColors.textSecondary,
                   ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () => Get.toNamed(AppRoutes.companyCreate),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('Create Company'),
                 ),
               ],
             ),
           );
         }
 
-        final logo = company.logoUrlOrBase64;
-
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              // Company Header Card
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(22),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
+        // If no company found on server and not loading
+        if (company == null) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.business_outlined,
+                    size: 64,
+                    color: AppColors.textHint,
                   ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF2563EB).withValues(alpha: 0.25),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No company found',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
                     ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    // Brand Logo with glowing border
-                    Container(
-                      width: 84,
-                      height: 84,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.8),
-                          width: 2.5,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Create your transport company profile to view and manage details here.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      color: AppColors.textSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () => companyCtrl.fetchCurrentCompany(),
+                        icon: const Icon(Icons.refresh, size: 18),
+                        label: const Text('Retry'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primaryBlue,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: (logo != null && logo.isNotEmpty)
-                            ? _buildLogoImage(logo)
-                            : Center(
-                                child: Text(
-                                  company.companyName.isNotEmpty
-                                      ? company.companyName[0].toUpperCase()
-                                      : 'C',
-                                  style: const TextStyle(
-                                    fontSize: 34,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.primaryBlue,
-                                  ),
-                                ),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      company.companyName,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      company.companyEmail,
-                      style: const TextStyle(
-                        fontSize: 13.5,
-                        color: Colors.white70,
-                      ),
-                    ),
-                    if (company.companyUUID != null) ...[
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 4.5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.2),
-                          ),
-                        ),
-                        child: Text(
-                          'ID: ${company.companyUUID!}',
-                          style: const TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                            letterSpacing: 0.8,
-                          ),
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: () => Get.toNamed(AppRoutes.companyCreate),
+                        icon: const Icon(Icons.add_business, size: 18),
+                        label: const Text('Create Company'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryBlue,
+                          foregroundColor: Colors.white,
                         ),
                       ),
                     ],
-                  ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final logo = company.logoUrlOrBase64;
+
+        return RefreshIndicator(
+          onRefresh: () => companyCtrl.fetchCurrentCompany(),
+          color: AppColors.primaryBlue,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                // Top refresh progress bar if background fetching
+                if (isLoading)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 12),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.all(Radius.circular(4)),
+                      child: LinearProgressIndicator(
+                        minHeight: 3,
+                        color: AppColors.primaryBlue,
+                        backgroundColor: AppColors.primaryBlueLight,
+                      ),
+                    ),
+                  ),
+
+                // Company Header Card
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF2563EB).withValues(alpha: 0.25),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      // Brand Logo with glowing border
+                      Container(
+                        width: 84,
+                        height: 84,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            width: 2.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: (logo != null && logo.isNotEmpty)
+                              ? _buildLogoImage(logo)
+                              : Center(
+                                  child: Text(
+                                    company.companyName.isNotEmpty
+                                        ? company.companyName[0].toUpperCase()
+                                        : 'C',
+                                    style: const TextStyle(
+                                      fontSize: 34,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.primaryBlue,
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        company.companyName,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        company.companyEmail,
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          color: Colors.white70,
+                        ),
+                      ),
+                      if (company.companyUUID != null) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 4.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Text(
+                            'ID: ${company.companyUUID!}',
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-              ),
 
-              const SizedBox(height: 20),
+                const SizedBox(height: 20),
 
-              // Contact Details Section
-              _buildSection(
-                icon: Icons.phone_in_talk,
-                title: 'Contact Details',
-                items: [
-                  if (company.whatsappNumber != null)
-                    _InfoRow('WhatsApp', '+${company.whatsappNumber!}'),
-                  if (company.contactNo1 != null)
-                    _InfoRow('Contact No. 1', '+${company.contactNo1!}'),
-                  if (company.contactNo2 != null)
-                    _InfoRow('Contact No. 2', '+${company.contactNo2!}'),
-                  if (company.landlineNo != null)
-                    _InfoRow('Landline', company.landlineNo!),
-                  if (company.tollFreeNumber != null)
-                    _InfoRow('Toll-Free', company.tollFreeNumber!),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // Tax & Legal Section
-              _buildSection(
-                icon: Icons.receipt_long,
-                title: 'Tax & Legal',
-                items: [
-                  if (company.panNumber != null)
-                    _InfoRow('PAN Number', company.panNumber!),
-                  if (company.gstNumber != null)
-                    _InfoRow('GST Number', company.gstNumber!),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // Address Section
-              _buildSection(
-                icon: Icons.location_on,
-                title: 'Address',
-                items: [
-                  if (company.address != null)
-                    _InfoRow('Street', company.address!),
-                  if (company.city != null) _InfoRow('City', company.city!),
-                  if (company.state != null)
-                    _InfoRow('State', company.state!),
-                  if (company.country != null)
-                    _InfoRow('Country', company.country!),
-                  if (company.branch != null)
-                    _InfoRow('Branch', company.branch!),
-                  if (company.mainBranch != null)
-                    _InfoRow('Main Branch', company.mainBranch!),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // Additional Section
-              if (company.website != null && company.website!.isNotEmpty)
+                // Contact Details Section
                 _buildSection(
-                  icon: Icons.language,
-                  title: 'Online Presence',
+                  icon: Icons.phone_in_talk,
+                  title: 'Contact Details',
                   items: [
-                    _InfoRow('Website', company.website!),
+                    if (company.whatsappNumber != null &&
+                        company.whatsappNumber!.isNotEmpty)
+                      _InfoRow('WhatsApp', _formatPhone(company.whatsappNumber!)),
+                    if (company.contactNo1 != null &&
+                        company.contactNo1!.isNotEmpty)
+                      _InfoRow('Contact No. 1', _formatPhone(company.contactNo1!)),
+                    if (company.contactNo2 != null &&
+                        company.contactNo2!.isNotEmpty)
+                      _InfoRow('Contact No. 2', _formatPhone(company.contactNo2!)),
+                    if (company.landlineNo != null &&
+                        company.landlineNo!.isNotEmpty)
+                      _InfoRow('Landline', company.landlineNo!),
+                    if (company.tollFreeNumber != null &&
+                        company.tollFreeNumber!.isNotEmpty)
+                      _InfoRow('Toll-Free', company.tollFreeNumber!),
                   ],
                 ),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 16),
 
-              // Action Buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => Get.toNamed(AppRoutes.companyEdit),
-                      icon: const Icon(Icons.edit_outlined, size: 18),
-                      label: const Text('Edit Profile'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primaryBlue,
-                        side: const BorderSide(
-                            color: AppColors.primaryBlue, width: 1.5),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                // Tax & Legal Section
+                _buildSection(
+                  icon: Icons.receipt_long,
+                  title: 'Tax & Legal',
+                  items: [
+                    if (company.panNumber != null &&
+                        company.panNumber!.isNotEmpty)
+                      _InfoRow('PAN Number', company.panNumber!),
+                    if (company.gstNumber != null &&
+                        company.gstNumber!.isNotEmpty)
+                      _InfoRow('GST Number', company.gstNumber!),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // Address Section
+                _buildSection(
+                  icon: Icons.location_on,
+                  title: 'Address',
+                  items: [
+                    if (company.address != null && company.address!.isNotEmpty)
+                      _InfoRow('Street', company.address!),
+                    if (company.city != null && company.city!.isNotEmpty)
+                      _InfoRow('City', company.city!),
+                    if (company.state != null && company.state!.isNotEmpty)
+                      _InfoRow('State', company.state!),
+                    if (company.country != null && company.country!.isNotEmpty)
+                      _InfoRow('Country', company.country!),
+                    if (company.branch != null && company.branch!.isNotEmpty)
+                      _InfoRow('Branch', company.branch!),
+                    if (company.mainBranch != null &&
+                        company.mainBranch!.isNotEmpty)
+                      _InfoRow('Main Branch', company.mainBranch!),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // Additional Section
+                if (company.website != null && company.website!.isNotEmpty)
+                  _buildSection(
+                    icon: Icons.language,
+                    title: 'Online Presence',
+                    items: [
+                      _InfoRow('Website', company.website!),
+                    ],
+                  ),
+
+                const SizedBox(height: 24),
+
+                // Action Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => Get.toNamed(AppRoutes.companyEdit),
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        label: const Text('Edit Profile'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primaryBlue,
+                          side: const BorderSide(
+                              color: AppColors.primaryBlue, width: 1.5),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _handleDeleteCompany(context, companyCtrl),
-                      icon: const Icon(Icons.delete_outline, size: 18),
-                      label: const Text('Request Delete'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.error,
-                        side: const BorderSide(
-                            color: AppColors.error, width: 1.5),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () =>
+                            _handleDeleteCompany(context, companyCtrl),
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        label: const Text('Request Delete'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.error,
+                          side: const BorderSide(
+                              color: AppColors.error, width: 1.5),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
 
-              const SizedBox(height: 24),
-            ],
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         );
       }),
     );
+  }
+
+  static String _formatPhone(String phone) {
+    if (phone.startsWith('+')) return phone;
+    return '+$phone';
   }
 
   Widget _buildLogoImage(String source) {

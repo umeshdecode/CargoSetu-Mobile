@@ -1,8 +1,14 @@
+import 'dart:async';
+import 'dart:developer';
+
 import 'package:cargo_setu/routes/app_pages.dart';
 import 'package:cargo_setu/routes/app_routes.dart';
+import 'package:cargo_setu/services/connectivity_service.dart';
 import 'package:cargo_setu/services/session_service.dart';
 import 'package:cargo_setu/theme/theme_controller.dart';
 import 'package:cargo_setu/util/constant.dart';
+import 'package:cargo_setu/widgets/error_screen.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -14,8 +20,46 @@ void main() async {
 
   // Initialize core services
   Get.put(SessionService());
+  Get.put(ConnectivityService());
 
-  runApp(const CargoSetuApp());
+  // ─── Global Error Handling ───────────────────────────────
+  // Override Flutter's default error widget (red screen) with our custom error screen
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    // In debug mode, show the standard Flutter error for easier debugging
+    if (kDebugMode) {
+      return ErrorWidget(details.exception);
+    }
+    // In release mode, show our custom transport-themed error screen
+    return ErrorScreen(
+      error: details.exceptionAsString(),
+      onRetry: () {
+        // Try to navigate back to dashboard
+        if (Get.context != null) {
+          Get.offAllNamed(AppRoutes.dashboard);
+        }
+      },
+    );
+  };
+
+  // Catch unhandled Flutter framework errors
+  FlutterError.onError = (FlutterErrorDetails details) {
+    log('🚨 Flutter Error: ${details.exceptionAsString()}');
+    log('Stack: ${details.stack}');
+    if (kDebugMode) {
+      FlutterError.dumpErrorToConsole(details);
+    }
+  };
+
+  // Catch async errors not caught by Flutter framework
+  runZonedGuarded(
+    () {
+      runApp(const CargoSetuApp());
+    },
+    (error, stackTrace) {
+      log('🚨 Uncaught async error: $error');
+      log('Stack: $stackTrace');
+    },
+  );
 }
 
 class CargoSetuApp extends StatelessWidget {

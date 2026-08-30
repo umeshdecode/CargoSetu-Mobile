@@ -15,14 +15,27 @@ class ApiRequest {
   factory ApiRequest() => _instance;
 
   late final Dio _dio;
+  late final Dio _refreshDio;
   final GetStorage _storage = GetStorage();
   bool _isRefreshing = false;
 
   ApiRequest._internal() {
     _dio = Dio(
       BaseOptions(
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 30),
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 15),
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+      ),
+    );
+
+    // Dedicated clean Dio instance for token refresh to avoid interceptor recursion
+    _refreshDio = Dio(
+      BaseOptions(
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
         headers: {
           "Content-Type": "application/json",
           "Accept": "application/json",
@@ -62,23 +75,25 @@ class ApiRequest {
 
       try {
         final oldToken = _storage.read(Constant.token);
-        if (oldToken == null) {
+        if (oldToken == null || oldToken.toString().isEmpty) {
           handler.next(err);
           return;
         }
 
-        // Attempt token refresh
-        final refreshResponse = await _dio.get(
+        // Attempt token refresh using isolated refresh client
+        final refreshResponse = await _refreshDio.get(
           Urls.refreshToken,
           options: Options(
             headers: {'Authorization': 'Bearer $oldToken'},
           ),
         );
 
-        if (refreshResponse.statusCode == 200) {
-          final newToken = refreshResponse.data['accessToken'];
-          if (newToken != null) {
-            _storage.write(Constant.token, newToken);
+        if (refreshResponse.statusCode == 200 && refreshResponse.data != null) {
+          final data = refreshResponse.data;
+          final newToken = data is Map ? data['accessToken'] : null;
+          if (newToken != null && newToken.toString().isNotEmpty) {
+            _storage.write(Constant.token, newToken.toString());
+            log('🔄 Token refreshed successfully in ApiRequest');
 
             // Retry original request with new token
             final retryOptions = err.requestOptions;
@@ -90,13 +105,41 @@ class ApiRequest {
           }
         }
       } catch (e) {
-        log('❌ Token refresh failed: $e');
+        log('❌ Token refresh in interceptor failed: $e');
       } finally {
         _isRefreshing = false;
       }
     }
 
     handler.next(err);
+  }
+
+  /// Direct token refresh method callable from services / controllers
+  Future<Map<String, dynamic>?> refreshToken() async {
+    try {
+      final oldToken = _storage.read(Constant.token);
+      if (oldToken == null || oldToken.toString().isEmpty) return null;
+
+      final response = await _refreshDio.get(
+        Urls.refreshToken,
+        options: Options(
+          headers: {'Authorization': 'Bearer $oldToken'},
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
+        final data = response.data as Map<String, dynamic>;
+        final newToken = data['accessToken'];
+        if (newToken != null) {
+          _storage.write(Constant.token, newToken.toString());
+        }
+        return data;
+      }
+      return null;
+    } catch (e) {
+      log('❌ Direct refreshToken error: $e');
+      return null;
+    }
   }
 
   /// Check if URL is a public (non-auth) endpoint.
@@ -109,6 +152,7 @@ class ApiRequest {
       '/auth/google/login',
       '/auth/google/signup',
       '/auth/check-user',
+      '/refreshtoken',
     ];
     return publicPaths.any((path) => url.contains(path));
   }

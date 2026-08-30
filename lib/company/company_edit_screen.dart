@@ -7,13 +7,32 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 /// Screen to edit an existing company.
-class CompanyEditScreen extends StatelessWidget {
+class CompanyEditScreen extends StatefulWidget {
   const CompanyEditScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final companyCtrl = Get.find<CompanyController>();
+  State<CompanyEditScreen> createState() => _CompanyEditScreenState();
+}
 
+class _CompanyEditScreenState extends State<CompanyEditScreen> {
+  late final CompanyController companyCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    companyCtrl = Get.isRegistered<CompanyController>()
+        ? Get.find<CompanyController>()
+        : Get.put(CompanyController());
+
+    if (companyCtrl.currentCompany.value == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        companyCtrl.fetchCurrentCompany();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bgLight,
       appBar: AppBar(
@@ -40,12 +59,57 @@ class CompanyEditScreen extends StatelessWidget {
       ),
       body: Obx(() {
         final company = companyCtrl.currentCompany.value;
+        final isLoading = companyCtrl.isLoading.value;
 
         if (company == null) {
-          return const Center(
-            child: Text(
-              'No company data to edit',
-              style: TextStyle(color: AppColors.textSecondary),
+          if (isLoading) {
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(color: AppColors.primaryBlue),
+                  SizedBox(height: 16),
+                  Text(
+                    'Loading company details...',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline,
+                      size: 56, color: AppColors.textHint),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No company data available to edit',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () => companyCtrl.fetchCurrentCompany(),
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('Retry Fetch'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryBlue,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         }

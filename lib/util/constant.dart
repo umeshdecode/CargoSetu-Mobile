@@ -8,7 +8,7 @@ class Constant {
   static const String extend_end_Date = "Extend End Date";
 
   static const String CURRENCY_SYMBOL_INR = "CURRENCY_SYMBOL_INR";
-  static const String APP_NAME = "AdoptFieldApp";
+  static const String APP_NAME = "Cargo Setu";
   static const TRANSACATION_ID = "TRANSACATION_ID";
   static const CUSTOMER_DOCUMENT_DETAIL = "CUSTOMER_DOCUMENT_DETAIL";
 
@@ -124,12 +124,6 @@ class Constant {
   static const String MOBILE_NUMBER = "MOBILE_NUMBER";
   static const String IS_INSTALLMENT_ALLOWED = "IS_INSTALLMENT_ALLOWED";
 
-  // play store
-  static const androidUpdatePackageString = "Android_CWSC_App_Version_Code";
-  static const iosUpdatePackageString = "IOS_CWSC_App_Version_Code";
-
-  static const androidTretailUpdatePackageString = "Android_Tretail_CWSC_App_Version_Code";
-  static const iosTretailUpdatePackageString = "IOS_Tretail_CWSC_App_Version_Code";
 
   //Argument Key
   static const String URL = "URL";
