@@ -7,13 +7,34 @@ import 'package:get/get.dart';
 
 import 'login_controller.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  @override
+  void initState() {
+    super.initState();
+    if (Get.isRegistered<LoginController>()) {
+      Get.delete<LoginController>(force: true);
+    }
+    Get.put(LoginController());
+  }
+
+  @override
+  void dispose() {
+    if (Get.isRegistered<LoginController>()) {
+      Get.delete<LoginController>(force: true);
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final height = MediaQuery.of(context).size.height;
-    Get.put(LoginController());
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -74,7 +95,7 @@ class LoginScreen extends StatelessWidget {
 
                         const SizedBox(height: 20),
 
-                        const LoginTabsCard(),
+                        LoginTabsCard(),
                       ],
                     ),
                   ),
@@ -194,7 +215,7 @@ class _LoginTabsCardState extends State<LoginTabsCard>
 /// =======================================================================
 
 class _MobileOtpTab extends StatelessWidget {
-  final LoginController controller = Get.find<LoginController>();
+  LoginController get controller => Get.find<LoginController>();
 
   @override
   Widget build(BuildContext context) {
@@ -285,7 +306,7 @@ class _MobileOtpTab extends StatelessWidget {
 /// =======================================================================
 
 class _EmailLoginTab extends StatelessWidget {
-  final LoginController controller = Get.find<LoginController>();
+  LoginController get controller => Get.find<LoginController>();
 
   @override
   Widget build(BuildContext context) {

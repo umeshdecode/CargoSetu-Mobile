@@ -1,6 +1,7 @@
 import 'package:cargo_setu/company/company_controller.dart';
 import 'package:cargo_setu/company/no_company_screen.dart';
 import 'package:cargo_setu/dashboard/dashboard.dart';
+import 'package:cargo_setu/profile/profile_screen.dart';
 import 'package:cargo_setu/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -31,11 +32,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       title: 'Loads',
       subtitle: 'Find and manage freight loads\nnear your location.',
     ),
-    const _ComingSoonPlaceholder(
-      icon: Icons.person_outline,
-      title: 'Profile',
-      subtitle: 'View and manage your\naccount settings.',
-    ),
+    const ProfileScreen(),
   ];
 
   @override
@@ -67,73 +64,75 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             ),
             bottomNavigationBar: Container(
               decoration: const BoxDecoration(
+                color: Colors.white,
                 border: Border(
-                  top: BorderSide(color: Color(0xFFE2E8F0), width: 0.5),
+                  top: BorderSide(color: Color(0xFFF1F5F9), width: 1),
                 ),
               ),
-              child: BottomNavigationBar(
-                currentIndex: _currentIndex,
-                type: BottomNavigationBarType.fixed,
-                backgroundColor: Colors.white,
-                elevation: 0,
-                selectedItemColor: AppColors.primaryBlue,
-                unselectedItemColor: const Color(0xFF94A3B8),
-                selectedFontSize: 11.5,
-                unselectedFontSize: 11.5,
-                selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700),
-                unselectedLabelStyle:
-                    const TextStyle(fontWeight: FontWeight.w500),
-                onTap: (index) {
-                  setState(() {
-                    _currentIndex = index;
-                  });
-                },
-                items: const [
-                  BottomNavigationBarItem(
-                    icon: Padding(
-                      padding: EdgeInsets.only(bottom: 3),
-                      child: Icon(Icons.home_outlined, size: 22),
+              child: NavigationBarTheme(
+                data: NavigationBarThemeData(
+                  backgroundColor: Colors.white,
+                  indicatorColor: const Color(0xFFD0E3FB),
+                  surfaceTintColor: Colors.white,
+                  elevation: 0,
+                  labelTextStyle: WidgetStateProperty.resolveWith((states) {
+                    if (states.contains(WidgetState.selected)) {
+                      return const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0F172A),
+                      );
+                    }
+                    return const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF64748B),
+                    );
+                  }),
+                  iconTheme: WidgetStateProperty.resolveWith((states) {
+                    if (states.contains(WidgetState.selected)) {
+                      return const IconThemeData(
+                        size: 22,
+                        color: Color(0xFF0F172A),
+                      );
+                    }
+                    return const IconThemeData(
+                      size: 22,
+                      color: Color(0xFF64748B),
+                    );
+                  }),
+                ),
+                child: NavigationBar(
+                  height: 65,
+                  selectedIndex: _currentIndex,
+                  onDestinationSelected: (index) {
+                    setState(() {
+                      _currentIndex = index;
+                    });
+                  },
+                  destinations: const [
+                    NavigationDestination(
+                      icon: Icon(Icons.home_outlined),
+                      selectedIcon: Icon(Icons.home),
+                      label: 'Home',
                     ),
-                    activeIcon: Padding(
-                      padding: EdgeInsets.only(bottom: 3),
-                      child: Icon(Icons.home_filled, size: 22),
+                    NavigationDestination(
+                      icon: Icon(Icons.description_outlined),
+                      selectedIcon: Icon(Icons.description),
+                      label: 'Documents',
                     ),
-                    label: 'Home',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Padding(
-                      padding: EdgeInsets.only(bottom: 3),
-                      child: Icon(Icons.description_outlined, size: 22),
+                    NavigationDestination(
+                      icon: Icon(Icons.local_shipping_outlined),
+                      selectedIcon: Icon(Icons.local_shipping),
+                      label: 'Loads',
                     ),
-                    activeIcon: Padding(
-                      padding: EdgeInsets.only(bottom: 3),
-                      child: Icon(Icons.description, size: 22),
+                    NavigationDestination(
+                      icon: Icon(Icons.person_outline),
+                      selectedIcon: Icon(Icons.person),
+                      label: 'Profile',
                     ),
-                    label: 'Documents',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Padding(
-                      padding: EdgeInsets.only(bottom: 3),
-                      child: Icon(Icons.local_shipping_outlined, size: 22),
-                    ),
-                    activeIcon: Padding(
-                      padding: EdgeInsets.only(bottom: 3),
-                      child: Icon(Icons.local_shipping, size: 22),
-                    ),
-                    label: 'Loads',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Padding(
-                      padding: EdgeInsets.only(bottom: 3),
-                      child: Icon(Icons.person_outline, size: 22),
-                    ),
-                    activeIcon: Padding(
-                      padding: EdgeInsets.only(bottom: 3),
-                      child: Icon(Icons.person, size: 22),
-                    ),
-                    label: 'Profile',
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );

@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:developer';
 
+import 'package:cargo_setu/auth/login_controller.dart';
+import 'package:cargo_setu/network/api_request.dart';
 import 'package:cargo_setu/util/constant.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -22,10 +24,31 @@ class SessionService extends GetxService {
   final RxList<String> roles = <String>[].obs;
   final RxList<String> permissions = <String>[].obs;
 
+  /// Viewable profile photo URL, kept in sync by `ProfileController`.
+  ///
+  /// Not persisted — presigned URLs expire, so it is repopulated from the
+  /// cached profile on start-up and refreshed on every profile fetch.
+  final RxString currentProfileImage = ''.obs;
+
   @override
   void onInit() {
     super.onInit();
     _loadFromStorage();
+    if (isLoggedIn.value) {
+      _proactiveTokenRefresh();
+    }
+  }
+
+  /// Silently refresh the token in the background so the user stays logged in
+  Future<void> _proactiveTokenRefresh() async {
+    try {
+      final data = await ApiRequest().refreshToken();
+      if (data != null) {
+        log('🔄 Background token refresh succeeded — session extended');
+      }
+    } catch (e) {
+      log('⚠️ Background token refresh check: $e');
+    }
   }
 
   /// Load session data from persistent storage.
@@ -114,6 +137,28 @@ class SessionService extends GetxService {
     _storage.write(Constant.companyStatus, status);
   }
 
+  /// Keep the cached identity in step with a freshly fetched/edited profile so
+  /// the drawer and dashboard header do not show stale details.
+  ///
+  /// Pass an empty string to clear the photo.
+  void updateIdentity({
+    String? userName,
+    String? email,
+    String? profileImageUrl,
+  }) {
+    if (userName != null && userName.trim().isNotEmpty) {
+      currentUserName.value = userName.trim();
+      _storage.write(Constant.userName, userName.trim());
+    }
+    if (email != null && email.trim().isNotEmpty) {
+      currentEmail.value = email.trim();
+      _storage.write(Constant.userEmail, email.trim());
+    }
+    if (profileImageUrl != null) {
+      currentProfileImage.value = profileImageUrl.trim();
+    }
+  }
+
   /// Clear all session data (logout).
   void clearSession() {
     _storage.remove(Constant.token);
@@ -133,8 +178,13 @@ class SessionService extends GetxService {
     currentUserName.value = '';
     currentEmail.value = '';
     currentStaffId.value = 0;
+    currentProfileImage.value = '';
     roles.clear();
     permissions.clear();
+
+    if (Get.isRegistered<LoginController>()) {
+      Get.delete<LoginController>(force: true);
+    }
 
     log('🔒 Session cleared');
   }

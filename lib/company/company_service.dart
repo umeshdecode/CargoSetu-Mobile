@@ -1,4 +1,3 @@
-import 'package:cargo_setu/company/model/company_model.dart';
 import 'package:cargo_setu/network/api_request.dart';
 import 'package:cargo_setu/util/url_const.dart';
 import 'package:dio/dio.dart';

@@ -417,7 +417,7 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
       return Image.network(
         source,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) =>
+        errorBuilder: (_, _, _) =>
             const Icon(Icons.business, size: 36, color: AppColors.primaryBlue),
       );
     }

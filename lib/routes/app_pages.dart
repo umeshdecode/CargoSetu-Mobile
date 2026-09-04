@@ -3,6 +3,9 @@ import 'package:cargo_setu/company/company_create_screen.dart';
 import 'package:cargo_setu/company/company_edit_screen.dart';
 import 'package:cargo_setu/company/company_profile_screen.dart';
 import 'package:cargo_setu/main.dart';
+import 'package:cargo_setu/profile/edit_profile_screen.dart';
+import 'package:cargo_setu/customer/screens/create_customer_screen.dart';
+import 'package:cargo_setu/customer/screens/customer_management_screen.dart';
 import 'package:get/get.dart';
 import '../auth/login_screen.dart';
 import '../dashboard/main_dashboard_screen.dart';
@@ -36,6 +39,18 @@ class AppPages {
     GetPage(
       name: '/company-edit',
       page: () => const CompanyEditScreen(),
+    ),
+    GetPage(
+      name: '/edit-profile',
+      page: () => const EditProfileScreen(),
+    ),
+    GetPage(
+      name: '/create-customer',
+      page: () => CreateCustomerScreen(),
+    ),
+    GetPage(
+      name: '/customer-management',
+      page: () => const CustomerManagementScreen(),
     ),
   ];
 }

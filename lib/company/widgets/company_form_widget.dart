@@ -19,6 +19,19 @@ import 'package:image_picker/image_picker.dart';
 /// - Number-only input constraints on phone fields
 /// - Auto-uppercase formatting on PAN & GST
 /// - "Same as WhatsApp" instant copy
+class UpperCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    return TextEditingValue(
+      text: newValue.text.toUpperCase(),
+      selection: newValue.selection,
+    );
+  }
+}
+
 class CompanyFormWidget extends StatefulWidget {
   final CompanyModel? company;
   final bool isSubmitting;
@@ -38,6 +51,7 @@ class CompanyFormWidget extends StatefulWidget {
 class _CompanyFormWidgetState extends State<CompanyFormWidget> {
   final _formKey = GlobalKey<FormState>();
   final ImagePicker _picker = ImagePicker();
+  AutovalidateMode _autoValidateMode = AutovalidateMode.disabled;
 
   // ─── Selected Logo File ─────────────────────────────────
   File? _logoFile;
@@ -309,6 +323,9 @@ class _CompanyFormWidgetState extends State<CompanyFormWidget> {
   }
 
   void _handleSubmit() {
+    setState(() {
+      _autoValidateMode = AutovalidateMode.onUserInteraction;
+    });
     if (!_formKey.currentState!.validate()) return;
 
     final fullWhatsapp = _combineCodeAndNumber(_whatsappCode, _whatsappCtrl.text);
@@ -362,6 +379,7 @@ class _CompanyFormWidgetState extends State<CompanyFormWidget> {
   Widget build(BuildContext context) {
     return Form(
       key: _formKey,
+      autovalidateMode: _autoValidateMode,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -559,17 +577,19 @@ class _CompanyFormWidgetState extends State<CompanyFormWidget> {
                 icon: Icons.badge_outlined,
                 isRequired: true,
                 maxLength: 10,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
                 textCapitalization: TextCapitalization.characters,
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
+                  UpperCaseTextFormatter(),
                 ],
                 onChanged: (v) {
-                  _panCtrl.value = _panCtrl.value.copyWith(
-                    text: v.toUpperCase(),
-                    selection:
-                        TextSelection.collapsed(offset: v.toUpperCase().length),
-                  );
+                  setState(() {});
                 },
+                suffixIcon: RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$')
+                        .hasMatch(_panCtrl.text.trim().toUpperCase())
+                    ? const Icon(Icons.check_circle, color: Color(0xFF16A34A), size: 20)
+                    : null,
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) {
                     return 'PAN number is required';
@@ -591,17 +611,19 @@ class _CompanyFormWidgetState extends State<CompanyFormWidget> {
                 icon: Icons.account_balance_outlined,
                 isRequired: true,
                 maxLength: 15,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
                 textCapitalization: TextCapitalization.characters,
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
+                  UpperCaseTextFormatter(),
                 ],
                 onChanged: (v) {
-                  _gstCtrl.value = _gstCtrl.value.copyWith(
-                    text: v.toUpperCase(),
-                    selection:
-                        TextSelection.collapsed(offset: v.toUpperCase().length),
-                  );
+                  setState(() {});
                 },
+                suffixIcon: RegExp(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$')
+                        .hasMatch(_gstCtrl.text.trim().toUpperCase())
+                    ? const Icon(Icons.check_circle, color: Color(0xFF16A34A), size: 20)
+                    : null,
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) {
                     return 'GST number is required';
@@ -699,7 +721,7 @@ class _CompanyFormWidgetState extends State<CompanyFormWidget> {
                     shrinkWrap: true,
                     padding: EdgeInsets.zero,
                     itemCount: _locationSuggestions.length,
-                    separatorBuilder: (_, __) =>
+                    separatorBuilder: (_, _) =>
                         Divider(height: 1, color: Colors.grey.shade200),
                     itemBuilder: (_, index) {
                       final s = _locationSuggestions[index];
@@ -1018,7 +1040,7 @@ class _CompanyFormWidgetState extends State<CompanyFormWidget> {
       return Image.network(
         source,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const Icon(Icons.business, size: 32),
+        errorBuilder: (_, _, _) => const Icon(Icons.business, size: 32),
       );
     }
     try {
@@ -1236,6 +1258,8 @@ class _CompanyFormWidgetState extends State<CompanyFormWidget> {
     FormFieldValidator<String>? validator,
     ValueChanged<String>? onChanged,
     List<TextInputFormatter>? inputFormatters,
+    AutovalidateMode? autovalidateMode,
+    Widget? suffixIcon,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1269,6 +1293,7 @@ class _CompanyFormWidgetState extends State<CompanyFormWidget> {
           validator: validator,
           onChanged: onChanged,
           inputFormatters: inputFormatters,
+          autovalidateMode: autovalidateMode ?? _autoValidateMode,
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
@@ -1282,6 +1307,7 @@ class _CompanyFormWidgetState extends State<CompanyFormWidget> {
               color: AppColors.textHint,
             ),
             prefixIcon: Icon(icon, size: 20, color: AppColors.textSecondary),
+            suffixIcon: suffixIcon,
             filled: true,
             fillColor: readOnly ? const Color(0xFFF1F5F9) : Colors.white,
             contentPadding:

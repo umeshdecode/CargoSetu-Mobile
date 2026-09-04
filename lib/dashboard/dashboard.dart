@@ -59,7 +59,9 @@ class DashboardScreen extends StatelessWidget {
               icon: Icons.people_outline,
               title: 'Customer Management',
               subtitle: 'Directory & CRM',
-              onTap: () {},
+              onTap: () {
+                Get.toNamed(AppRoutes.customerManagement);
+              },
             ),
             const SizedBox(height: 10),
 

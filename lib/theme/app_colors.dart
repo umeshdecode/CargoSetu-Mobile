@@ -50,4 +50,27 @@ class AppColors {
     end: Alignment.bottomRight,
     colors: [Color(0xFFF8FAFC), Color(0xFFEFF6FF)],
   );
+
+  // Tailwind mapped colors for new UI
+  static const Color primary = Color(0xFF051125);
+  static const Color onPrimary = Color(0xFFFFFFFF);
+  static const Color primaryContainer = Color(0xFF1B263B);
+  static const Color onPrimaryContainer = Color(0xFF828DA7);
+  
+  static const Color secondary = Color(0xFF47607E);
+  static const Color onSecondary = Color(0xFFFFFFFF);
+  static const Color secondaryContainer = Color(0xFFC2DCFF);
+  static const Color onSecondaryContainer = Color(0xFF48617E);
+  
+  static const Color surface = Color(0xFFF9FAF5);
+  static const Color onSurface = Color(0xFF1A1C1A);
+  static const Color onSurfaceVariant = Color(0xFF45474D);
+  static const Color surfaceContainerLowest = Color(0xFFFFFFFF);
+  static const Color surfaceContainerLow = Color(0xFFF3F4F0);
+  static const Color surfaceContainer = Color(0xFFEDEEEA);
+  static const Color surfaceContainerHigh = Color(0xFFE8E8E4);
+  
+  static const Color tertiaryFixedVariant = Color(0xFF6F3800);
+  static const Color onTertiaryContainer = Color(0xFFC67C3E);
+  static const Color primaryFixed = Color(0xFFD7E2FF);
 }

@@ -19,6 +19,13 @@ class Urls {
   static const String company = "$baseUrl/api/v2/cargosetu/company";
   static const String currentCompany = "$company/currentCompany";
 
+  // ─── STAFF / PROFILE ───────────────────────────────────
+  static const String staff = "$baseUrl/api/v2/cargosetu/staff";
+  static const String myProfile = "$staff/myprofile";
+  static const String myProfileImage = "$staff/myprofile/image";
+  static String staffById(int staffId) => "$staff/$staffId";
+  static String staffProfileImage(int staffId) => "$staff/$staffId/image";
+
   // ─── BRANCHES ───────────────────────────────────────────
   static const String branches = "$baseUrl/api/v2/cargosetu/branches";
 

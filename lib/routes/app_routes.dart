@@ -7,4 +7,7 @@ class AppRoutes {
   static const companyCreate = '/company-create';
   static const companyProfile = '/company-profile';
   static const companyEdit = '/company-edit';
+  static const editProfile = '/edit-profile';
+  static const createCustomer = '/create-customer';
+  static const customerManagement = '/customer-management';
 }
