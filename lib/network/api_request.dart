@@ -24,11 +24,44 @@ class ApiRequest {
   final GetStorage _storage = GetStorage();
   bool _isRefreshing = false;
 
+  /// User-friendly error message formatter that prevents raw stacktraces from being shown to users.
+  static String formatErrorMessage(dynamic error, {String defaultMessage = 'An unexpected error occurred'}) {
+    if (error is DioException) {
+      switch (error.type) {
+        case DioExceptionType.connectionTimeout:
+          return 'Connection timed out. Please check your internet connection.';
+        case DioExceptionType.sendTimeout:
+          return 'Request timed out while sending data. Please try again.';
+        case DioExceptionType.receiveTimeout:
+          return 'The server took longer than expected to generate the document (timed out). Please try again.';
+        case DioExceptionType.badResponse:
+          final data = error.response?.data;
+          if (data is Map) {
+            final msg = data['responseMessege'] ?? data['message'] ?? data['error'];
+            if (msg != null && msg.toString().trim().isNotEmpty) {
+              return msg.toString();
+            }
+          }
+          final status = error.response?.statusCode;
+          return status != null ? 'Server error ($status). Please try again.' : 'Invalid response from server.';
+        case DioExceptionType.connectionError:
+          return 'Unable to reach the server. Please check your network connection.';
+        case DioExceptionType.cancel:
+          return 'Request was cancelled.';
+        default:
+          return error.message != null && error.message!.isNotEmpty
+              ? error.message!
+              : defaultMessage;
+      }
+    }
+    return error?.toString() ?? defaultMessage;
+  }
+
   ApiRequest._internal() {
     _dio = Dio(
       BaseOptions(
-        connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 15),
+        connectTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 60),
         headers: {
           "Content-Type": "application/json",
           "Accept": "application/json",
@@ -39,8 +72,8 @@ class ApiRequest {
     // Dedicated clean Dio instance for token refresh to avoid interceptor recursion
     _refreshDio = Dio(
       BaseOptions(
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
         headers: {
           "Content-Type": "application/json",
           "Accept": "application/json",
@@ -231,12 +264,15 @@ class ApiRequest {
   Future<Response> post({
     required String url,
     dynamic data,
+    Map<String, dynamic>? queryParams,
+    Map<String, dynamic>? headers,
     String? token,
   }) async {
     return _dio.post(
       url,
       data: data,
-      options: _tokenOverride(token),
+      queryParameters: queryParams,
+      options: _buildOptions(token: token, headers: headers),
     );
   }
 
@@ -244,17 +280,18 @@ class ApiRequest {
   Future<Response<T>> get<T>({
     required String url,
     Map<String, dynamic>? queryParams,
+    Map<String, dynamic>? headers,
     String? token,
     ResponseType? responseType,
   }) async {
-    Options? opts = _tokenOverride(token);
-    if (responseType != null) {
-      opts = (opts ?? Options()).copyWith(responseType: responseType);
-    }
     return _dio.get<T>(
       url,
       queryParameters: queryParams,
-      options: opts,
+      options: _buildOptions(
+        token: token,
+        headers: headers,
+        responseType: responseType,
+      ),
     );
   }
 
@@ -262,12 +299,15 @@ class ApiRequest {
   Future<Response> put({
     required String url,
     dynamic data,
+    Map<String, dynamic>? queryParams,
+    Map<String, dynamic>? headers,
     String? token,
   }) async {
     return _dio.put(
       url,
       data: data,
-      options: _tokenOverride(token),
+      queryParameters: queryParams,
+      options: _buildOptions(token: token, headers: headers),
     );
   }
 
@@ -275,12 +315,15 @@ class ApiRequest {
   Future<Response> delete({
     required String url,
     dynamic data,
+    Map<String, dynamic>? queryParams,
+    Map<String, dynamic>? headers,
     String? token,
   }) async {
     return _dio.delete(
       url,
       data: data,
-      options: _tokenOverride(token),
+      queryParameters: queryParams,
+      options: _buildOptions(token: token, headers: headers),
     );
   }
 
@@ -288,12 +331,17 @@ class ApiRequest {
   Future<Response> postMultipart({
     required String url,
     required FormData data,
+    Map<String, dynamic>? headers,
     String? token,
   }) async {
     return _dio.post(
       url,
       data: data,
-      options: _tokenOverride(token, contentType: 'multipart/form-data'),
+      options: _buildOptions(
+        token: token,
+        contentType: 'multipart/form-data',
+        headers: headers,
+      ),
     );
   }
 
@@ -301,21 +349,40 @@ class ApiRequest {
   Future<Response> putMultipart({
     required String url,
     required FormData data,
+    Map<String, dynamic>? headers,
     String? token,
   }) async {
     return _dio.put(
       url,
       data: data,
-      options: _tokenOverride(token, contentType: 'multipart/form-data'),
+      options: _buildOptions(
+        token: token,
+        contentType: 'multipart/form-data',
+        headers: headers,
+      ),
     );
   }
 
-  /// Override token if explicitly provided (for special cases).
-  Options? _tokenOverride(String? token, {String? contentType}) {
-    if (token == null && contentType == null) return null;
+  /// Build Options merging token, custom headers, content type, and response type.
+  Options? _buildOptions({
+    String? token,
+    String? contentType,
+    Map<String, dynamic>? headers,
+    ResponseType? responseType,
+  }) {
+    final mergedHeaders = <String, dynamic>{
+      if (token != null) 'Authorization': 'Bearer $token',
+      ...?headers,
+    };
+
+    if (mergedHeaders.isEmpty && contentType == null && responseType == null) {
+      return null;
+    }
+
     return Options(
-      headers: token != null ? {'Authorization': 'Bearer $token'} : null,
+      headers: mergedHeaders.isNotEmpty ? mergedHeaders : null,
       contentType: contentType,
+      responseType: responseType,
     );
   }
 }

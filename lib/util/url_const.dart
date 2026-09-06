@@ -1,7 +1,7 @@
 /// All API endpoint URLs for the CargoSetu backend.
 class Urls {
-  // static const String baseUrl = "http://192.168.1.6:31201";
-  static const String baseUrl = "https://code-setu-app.onrender.com";
+  static const String baseUrl = "http://192.168.1.6:31201";
+  // static const String baseUrl = "https://code-setu-app.onrender.com";
   // static const String baseUrl = "https://gameless-vacillating-stevie.ngrok-free.dev";
 
   // ─── AUTH ───────────────────────────────────────────────

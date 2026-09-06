@@ -73,6 +73,9 @@ class TemplateService {
     try {
       final response = await _api.get(
         url: Urls.templatePreviewHtml(templateId),
+        headers: {
+          'Accept': 'text/html, */*',
+        },
       );
 
       if (response.statusCode == 200 && response.data != null) {
@@ -91,6 +94,9 @@ class TemplateService {
       final response = await _api.get<List<int>>(
         url: Urls.quotationPdf(shiftingId, templateId: templateId),
         responseType: ResponseType.bytes,
+        headers: {
+          'Accept': 'application/pdf, */*',
+        },
       );
 
       if (response.statusCode == 200 && response.data != null) {
@@ -107,18 +113,35 @@ class TemplateService {
   Future<String?> savePdfToFile({
     required List<int> bytes,
     required String fileName,
+    String? targetDirectoryPath,
   }) async {
     try {
-      Directory? targetDir;
+      if (targetDirectoryPath != null && targetDirectoryPath.trim().isNotEmpty) {
+        final dir = Directory(targetDirectoryPath);
+        if (!await dir.exists()) {
+          await dir.create(recursive: true);
+        }
+        final filePath = '${dir.path}/$fileName';
+        final file = File(filePath);
+        await file.writeAsBytes(bytes, flush: true);
+        return file.path;
+      }
+
       if (Platform.isAndroid) {
-        final downloadDir = Directory('/storage/emulated/0/Download');
-        if (await downloadDir.exists()) {
-          targetDir = downloadDir;
+        try {
+          final downloadDir = Directory('/storage/emulated/0/Download');
+          if (await downloadDir.exists()) {
+            final filePath = '${downloadDir.path}/$fileName';
+            final file = File(filePath);
+            await file.writeAsBytes(bytes, flush: true);
+            return file.path;
+          }
+        } catch (e) {
+          log('⚠️ Direct write to Download folder failed, falling back to temp: $e');
         }
       }
 
-      targetDir ??= Directory.systemTemp;
-
+      final targetDir = Directory.systemTemp;
       final filePath = '${targetDir.path}/$fileName';
       final file = File(filePath);
       await file.writeAsBytes(bytes, flush: true);

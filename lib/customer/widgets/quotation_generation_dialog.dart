@@ -2,11 +2,13 @@ import 'dart:developer';
 import 'package:cargo_setu/customer/models/customer_model.dart';
 import 'package:cargo_setu/customer/models/template_model.dart';
 import 'package:cargo_setu/customer/services/template_service.dart';
+import 'package:cargo_setu/network/api_request.dart';
 import 'package:cargo_setu/theme/app_colors.dart';
 import 'package:cargo_setu/widgets/app_dialog.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 class QuotationGenerationDialog extends StatefulWidget {
   final CustomerModel customer;
@@ -125,117 +127,32 @@ class _QuotationGenerationDialogState extends State<QuotationGenerationDialog> {
       final html = await _templateService.getTemplatePreviewHtml(template.id);
       Get.back(); // close loading
 
-      if (html == null || html.isEmpty) {
-        Get.snackbar('Preview', 'No preview content available for this template');
+      if (html == null || html.trim().isEmpty) {
+        Get.snackbar(
+          'Preview',
+          'No preview content available for this template.',
+          snackPosition: SnackPosition.TOP,
+        );
         return;
       }
 
-      // Extract plain text preview snippet from HTML
-      final stripped = html
-          .replaceAll(RegExp(r'<style[\s\S]*?</style>', caseSensitive: false), '')
-          .replaceAll(RegExp(r'<script[\s\S]*?</script>', caseSensitive: false), '')
-          .replaceAll(RegExp(r'<[^>]*>'), ' ')
-          .replaceAll(RegExp(r'\s+'), ' ')
-          .trim();
-
       Get.dialog(
-        Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 420, maxHeight: 520),
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Preview: ${template.name}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 20),
-                      onPressed: () => Get.back(),
-                    ),
-                  ],
-                ),
-                const Divider(),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryBlueLight,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.description, size: 16, color: AppColors.primaryBlue),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Type: ${template.type}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primaryBlue,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.bgLight,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: SingleChildScrollView(
-                      child: Text(
-                        stripped.isNotEmpty ? stripped : 'Template HTML loaded successfully.',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textSecondary,
-                          height: 1.4,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Get.back(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text('Close Preview'),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        _TemplateHtmlPreviewDialog(
+          templateName: template.name,
+          templateType: template.type,
+          htmlContent: html,
         ),
       );
     } catch (e) {
       Get.back(); // close loading
-      Get.snackbar('Error', 'Failed to load preview');
+      final errorMsg = ApiRequest.formatErrorMessage(e, defaultMessage: 'Failed to load template preview');
+      Get.snackbar(
+        'Preview Failed',
+        errorMsg,
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: const Color(0xFFEF4444),
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -251,38 +168,120 @@ class _QuotationGenerationDialogState extends State<QuotationGenerationDialog> {
       final shiftingId = _selectedShifting!.shiftingId!;
       final templateId = _selectedTemplate?.id;
 
+      // 1. Download PDF bytes from server (60s timeout configured)
       final pdfBytes = await _templateService.downloadQuotationPdf(
         shiftingId,
         templateId: templateId,
       );
 
-      if (pdfBytes != null && pdfBytes.isNotEmpty) {
-        final fileName = 'Quotation_${widget.customer.firstName}_$shiftingId.pdf'
-            .replaceAll(' ', '_');
-        final savedPath = await _templateService.savePdfToFile(
-          bytes: pdfBytes,
-          fileName: fileName,
+      if (pdfBytes == null || pdfBytes.isEmpty) {
+        setState(() => _isDownloadingPdf = false);
+        Get.snackbar(
+          'Error',
+          'Failed to retrieve quotation PDF content from server',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: const Color(0xFFEF4444),
+          colorText: Colors.white,
+        );
+        return;
+      }
+
+      setState(() => _isDownloadingPdf = false);
+
+      final fileName = 'Quotation_${widget.customer.firstName}_$shiftingId.pdf'
+          .replaceAll(' ', '_');
+
+      // 2. Allow user to select download folder
+      String? chosenDirectory;
+      try {
+        chosenDirectory = await FilePicker.getDirectoryPath(
+          dialogTitle: 'Select folder to save $fileName',
+        );
+      } catch (pickerErr) {
+        log('⚠️ Folder picker error: $pickerErr');
+      }
+
+      String? targetDir = chosenDirectory;
+      if (targetDir == null || targetDir.trim().isEmpty) {
+        // User cancelled folder picker - ask if they want to save in default Downloads folder
+        final bool? saveInDefault = await Get.dialog<bool>(
+          AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.folder_open, color: AppColors.primaryBlue),
+                SizedBox(width: 8),
+                Text('Save Location', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: const Text(
+              'No custom folder was selected. Would you like to save the quotation in the default Downloads folder?',
+              style: TextStyle(fontSize: 13, height: 1.4),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Get.back(result: false),
+                child: const Text('Cancel Download', style: TextStyle(color: AppColors.textSecondary)),
+              ),
+              ElevatedButton(
+                onPressed: () => Get.back(result: true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryBlue,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text('Save in Downloads'),
+              ),
+            ],
+          ),
         );
 
-        setState(() => _isDownloadingPdf = false);
+        if (saveInDefault != true) {
+          Get.snackbar(
+            'Download Cancelled',
+            'Download cancelled: no destination folder selected.',
+            snackPosition: SnackPosition.TOP,
+          );
+          return;
+        }
+      }
 
-        if (context.mounted) {
+      // 3. Save PDF file to chosen directory (or default)
+      final savedPath = await _templateService.savePdfToFile(
+        bytes: pdfBytes,
+        fileName: fileName,
+        targetDirectoryPath: targetDir,
+      );
+
+      if (savedPath != null) {
+        if (mounted) {
           AppDialog.showSuccess(
             context,
-            title: 'Quotation Downloaded',
-            message: savedPath != null
-                ? 'Quotation PDF saved successfully!\n\nPath: $savedPath'
-                : 'Quotation PDF downloaded successfully!',
+            title: 'Quotation Downloaded! 📄',
+            message: 'Quotation PDF has been saved successfully.\n\nPath:\n$savedPath',
             positiveBtnText: 'OK',
           );
         }
       } else {
-        setState(() => _isDownloadingPdf = false);
-        Get.snackbar('Error', 'Failed to retrieve quotation PDF content');
+        Get.snackbar(
+          'Save Failed',
+          'Failed to save PDF to the selected folder. Please verify storage permissions.',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: const Color(0xFFEF4444),
+          colorText: Colors.white,
+        );
       }
     } catch (e) {
       setState(() => _isDownloadingPdf = false);
-      Get.snackbar('Error', 'Download failed: $e');
+      final errorMsg = ApiRequest.formatErrorMessage(e, defaultMessage: 'Failed to download quotation PDF');
+      Get.snackbar(
+        'Download Failed',
+        errorMsg,
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: const Color(0xFFEF4444),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 4),
+      );
     }
   }
 
@@ -317,7 +316,7 @@ class _QuotationGenerationDialogState extends State<QuotationGenerationDialog> {
       setState(() => _isSendingEmail = false);
 
       if (result['success'] == true) {
-        if (context.mounted) {
+        if (mounted) {
           AppDialog.showSuccess(
             context,
             title: 'Quotation Sent! ✉️',
@@ -331,7 +330,14 @@ class _QuotationGenerationDialogState extends State<QuotationGenerationDialog> {
       }
     } catch (e) {
       setState(() => _isSendingEmail = false);
-      Get.snackbar('Error', 'Failed to send quotation: $e');
+      final errorMsg = ApiRequest.formatErrorMessage(e, defaultMessage: 'Failed to send quotation');
+      Get.snackbar(
+        'Error',
+        errorMsg,
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: const Color(0xFFEF4444),
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -1002,6 +1008,217 @@ class _QuotationGenerationDialogState extends State<QuotationGenerationDialog> {
                 ),
               ],
             ),
+    );
+  }
+}
+
+/// Renders Thymeleaf HTML/CSS templates in a native WebView with full CSS styling
+/// and an interactive full-screen preview mode with pinch-to-zoom support.
+class _TemplateHtmlPreviewDialog extends StatefulWidget {
+  final String templateName;
+  final String templateType;
+  final String htmlContent;
+
+  const _TemplateHtmlPreviewDialog({
+    required this.templateName,
+    required this.templateType,
+    required this.htmlContent,
+  });
+
+  @override
+  State<_TemplateHtmlPreviewDialog> createState() => _TemplateHtmlPreviewDialogState();
+}
+
+class _TemplateHtmlPreviewDialogState extends State<_TemplateHtmlPreviewDialog> {
+  late final WebViewController _controller;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _initController();
+  }
+
+  void _initController() {
+    String html = widget.htmlContent;
+    // Inject viewport meta if not present so it scales nicely on mobile
+    if (!html.contains('name="viewport"')) {
+      if (html.contains('<head>')) {
+        html = html.replaceFirst(
+          '<head>',
+          '<head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">',
+        );
+      } else if (html.contains('<html>')) {
+        html = html.replaceFirst(
+          '<html>',
+          '<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes"></head>',
+        );
+      }
+    }
+
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..enableZoom(true)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (_) {
+            if (mounted) setState(() => _isLoading = false);
+          },
+        ),
+      )
+      ..loadHtmlString(html);
+  }
+
+  void _openFullScreen() {
+    Get.to(
+      () => Scaffold(
+        appBar: AppBar(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          title: Text(
+            '${widget.templateName} (${widget.templateType})',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.close),
+              tooltip: 'Close Full Screen',
+              onPressed: () => Get.back(),
+            ),
+          ],
+        ),
+        body: WebViewWidget(controller: _controller),
+      ),
+      transition: Transition.fadeIn,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 520, maxHeight: 680),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header Row
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Preview: ${widget.templateName}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryBlueLight,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              widget.templateType.toUpperCase(),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primaryBlue,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'HTML / CSS Template',
+                            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.fullscreen, color: AppColors.primaryBlue, size: 24),
+                  tooltip: 'Full Screen Preview',
+                  onPressed: _openFullScreen,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 20),
+                  onPressed: () => Get.back(),
+                ),
+              ],
+            ),
+            const Divider(height: 16),
+
+            // WebView Body
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppColors.border),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Stack(
+                    children: [
+                      WebViewWidget(controller: _controller),
+                      if (_isLoading)
+                        const Center(
+                          child: CircularProgressIndicator(color: AppColors.primaryBlue),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Action Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _openFullScreen,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primaryBlue,
+                      side: const BorderSide(color: AppColors.primaryBlue),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                    icon: const Icon(Icons.fullscreen, size: 18),
+                    label: const Text('Full Screen Preview', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Get.back(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryBlue,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                    child: const Text('Close'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
