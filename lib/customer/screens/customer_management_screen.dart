@@ -2,6 +2,7 @@ import 'package:cargo_setu/customer/controllers/customer_management_controller.d
 import 'package:cargo_setu/customer/models/customer_model.dart';
 import 'package:cargo_setu/customer/screens/create_customer_screen.dart';
 import 'package:cargo_setu/customer/screens/edit_customer_screen.dart';
+import 'package:cargo_setu/customer/widgets/quotation_generation_dialog.dart';
 import 'package:cargo_setu/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -364,11 +365,9 @@ class CustomerManagementScreen extends StatelessWidget {
         ));
   }
 
-  Widget _buildCustomerCard(
-    BuildContext context,
-    CustomerModel customer,
-    CustomerManagementController ctrl,
-  ) {
+  Widget _buildCustomerCard(BuildContext context,
+      CustomerModel customer,
+      CustomerManagementController ctrl,) {
     final isCompleted = !customer.shiftActive;
 
     return Container(
@@ -451,17 +450,6 @@ class CustomerManagementScreen extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                            if (customer.customerId != null) ...[
-                              const SizedBox(width: 6),
-                              Text(
-                                '#${customer.customerId}',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.secondary,
-                                ),
-                              ),
-                            ]
                           ],
                         ),
                       ],
@@ -695,7 +683,7 @@ class CustomerManagementScreen extends StatelessWidget {
                       if (action == 'delete') {
                         ctrl.confirmDeleteCustomer(context, customer);
                       } else if (action == 'quotation') {
-                        Get.snackbar('Quotation', 'Generating quotation for ${customer.fullName}...');
+                        QuotationGenerationDialog.show(context, customer: customer);
                       } else if (action == 'invoice') {
                         Get.snackbar('Invoice', 'Generating invoice for ${customer.fullName}...');
                       }

@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class ExtraCharge {
+  int? extraChargesId;
   String chargeName;
   double chargeValue;
   double chargeRate;
 
   ExtraCharge({
+    this.extraChargesId,
     this.chargeName = '',
     this.chargeValue = 0.0,
     this.chargeRate = 0.0,
@@ -14,6 +16,7 @@ class ExtraCharge {
 
   factory ExtraCharge.fromJson(Map<String, dynamic> json) {
     return ExtraCharge(
+      extraChargesId: json['extraChargesId'] as int?,
       chargeName: json['chargeName']?.toString() ?? '',
       chargeValue: (json['chargeValue'] is num)
           ? (json['chargeValue'] as num).toDouble()
@@ -25,6 +28,7 @@ class ExtraCharge {
   }
 
   Map<String, dynamic> toJson() => {
+        if (extraChargesId != null) 'extraChargesId': extraChargesId,
         'chargeName': chargeName,
         'chargeValue': chargeValue,
         'chargeRate': chargeRate,
@@ -163,7 +167,7 @@ class Shifting {
   }
 
   factory Shifting.fromJson(Map<String, dynamic> json) {
-    final chargesJson = json['charges'] ?? json['chargesDTO'] ?? {};
+    final chargesJson = json['charges'] ?? json['chargesDTO'] ?? json['chargesDto'] ?? json['charge'] ?? {};
     Charges chargesObj = chargesJson is Map<String, dynamic>
         ? Charges.fromJson(chargesJson)
         : Charges();
@@ -185,7 +189,11 @@ class Shifting {
       shiftingType: json['shiftingType']?.toString() ?? 'household',
       shiftingStartDate: _parseDate(json['shiftingStartDate']),
       shiftReachedDate: _parseDate(json['shiftReachedDate']),
-      isShiftCompleted: json['isShiftCompleted'] == true,
+      isShiftCompleted: json['isShiftCompleted'] == true ||
+          json['shiftCompleted'] == true ||
+          json['is_shift_completed'] == true ||
+          json['isShiftCompleted']?.toString() == 'true' ||
+          json['shiftCompleted']?.toString() == 'true',
       shiftCompletedBy: json['shiftCompletedBy']?.toString(),
       shiftCompletedById: json['shiftCompletedById'] as int?,
       tokenMoney: token,
@@ -205,9 +213,11 @@ class Shifting {
         if (shiftReachedDate != null)
           'shiftReachedDate': shiftReachedDate!.toIso8601String().substring(0, 10),
         'isShiftCompleted': isShiftCompleted,
+        'shiftCompleted': isShiftCompleted,
         if (shiftCompletedBy != null) 'shiftCompletedBy': shiftCompletedBy,
         if (shiftCompletedById != null) 'shiftCompletedById': shiftCompletedById,
         'tokenMoney': tokenMoney,
+        'charges': charges.toJson(),
         'chargesDTO': charges.toJson(),
       };
 }
@@ -255,7 +265,7 @@ class CustomerModel {
 
   String get fullName => '$firstName $lastName'.trim().isNotEmpty
       ? '$firstName $lastName'.trim()
-      : 'Customer #$customerId';
+      : 'Customer --';
 
   String get routeSummary {
     if (shiftings.isNotEmpty) {
@@ -273,12 +283,14 @@ class CustomerModel {
     return 'Location not specified';
   }
 
-  bool get shiftActive {
+  bool get isCustomerCompleted {
     if (shiftings.isNotEmpty) {
-      return !shiftings.first.isShiftCompleted;
+      return shiftings.every((s) => s.isShiftCompleted);
     }
-    return !isShiftCompleted;
+    return isShiftCompleted;
   }
+
+  bool get shiftActive => !isCustomerCompleted;
 
   factory CustomerModel.fromJson(Map<String, dynamic> json) {
     List<Shifting> parsedShiftings = [];
@@ -307,7 +319,11 @@ class CustomerModel {
       alternateMobileNo: json['alternateMobileNo']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
       workEmail: json['workEmail']?.toString() ?? '',
-      isShiftCompleted: json['isShiftCompleted'] == true,
+      isShiftCompleted: json['isShiftCompleted'] == true ||
+          json['shiftCompleted'] == true ||
+          json['is_shift_completed'] == true ||
+          json['isShiftCompleted']?.toString() == 'true' ||
+          json['shiftCompleted']?.toString() == 'true',
       shiftFromCity: json['shiftFromCity']?.toString() ?? '',
       shiftToCity: json['shiftToCity']?.toString() ?? '',
       fromAddress: json['fromAddress']?.toString(),
@@ -330,7 +346,8 @@ class CustomerModel {
         'email': email,
         'workEmail': workEmail,
         if (uuid != null) 'uuid': uuid,
-        'isShiftCompleted': isShiftCompleted,
+        'isShiftCompleted': isCustomerCompleted,
+        'shiftCompleted': isCustomerCompleted,
         'shiftings': shiftings.map((s) => s.toJson()).toList(),
       };
 
@@ -350,41 +367,129 @@ class CustomerModel {
 class ShiftingTypeHelper {
   ShiftingTypeHelper._();
 
-  static const Map<String, String> typeMap = {
+  static const List<String> defaultTypes = [
+    'House Shifting',
+    'Office Shifting',
+    'Factory Shifting',
+    'Mall Shifting',
+    'Shop Shifting',
+    'Warehouse Shifting',
+    'Goods Shifting',
+    'Govt. Related Shifting',
+    'Medical Item Shifting',
+    'Electronic Item Shift',
+    'Liquid Items Shift',
+    'Industrial Items Shift',
+    'Others',
+  ];
+
+  static const Map<String, String> legacyMap = {
     'medical': 'Medical Item Shifting',
-    'household': 'Household Relocation',
-    'office': 'Corporate & Office Shifting',
-    'vehicle': 'Automobile & Heavy Haulage',
+    'household': 'House Shifting',
+    'office': 'Office Shifting',
+    'vehicle': 'Goods Shifting',
   };
 
-  /// Normalizes any incoming string (key, full label, uppercase, or fuzzy) to a canonical key
-  static String normalize(String? value) {
-    if (value == null || value.trim().isEmpty) return 'household';
+  /// Normalizes any incoming string (key, full label, uppercase, or fuzzy) to the official title string
+  static String normalize(String? value, [List<String>? availableTypes]) {
+    if (value == null || value.trim().isEmpty) return defaultTypes.first;
     final v = value.trim();
     final lower = v.toLowerCase();
 
-    // 1. Direct key match
-    if (typeMap.containsKey(lower)) return lower;
+    final typeList = (availableTypes != null && availableTypes.isNotEmpty) ? availableTypes : defaultTypes;
 
-    // 2. Direct label match (case insensitive)
-    for (var entry in typeMap.entries) {
-      if (entry.value.toLowerCase() == lower) return entry.key;
+    // 1. Exact case-insensitive match against availableTypes or defaultTypes
+    for (var type in typeList) {
+      if (type.toLowerCase() == lower) return type;
+    }
+
+    // 2. Legacy key match
+    if (legacyMap.containsKey(lower)) {
+      final mapped = legacyMap[lower]!;
+      for (var type in typeList) {
+        if (type.toLowerCase() == mapped.toLowerCase()) return type;
+      }
+      return mapped;
     }
 
     // 3. Fuzzy matching
-    if (lower.contains('medic')) return 'medical';
-    if (lower.contains('house')) return 'household';
-    if (lower.contains('office') || lower.contains('corp')) return 'office';
-    if (lower.contains('vehic') || lower.contains('auto') || lower.contains('haul') || lower.contains('heavy')) {
-      return 'vehicle';
+    if (lower.contains('medic')) return 'Medical Item Shifting';
+    if (lower.contains('house')) return 'House Shifting';
+    if (lower.contains('office') || lower.contains('corp')) return 'Office Shifting';
+    if (lower.contains('vehic') || lower.contains('auto') || lower.contains('good') || lower.contains('haul')) {
+      return 'Goods Shifting';
+    }
+    if (lower.contains('factor')) return 'Factory Shifting';
+    if (lower.contains('mall')) return 'Mall Shifting';
+    if (lower.contains('shop')) return 'Shop Shifting';
+    if (lower.contains('warehous')) return 'Warehouse Shifting';
+    if (lower.contains('govt')) return 'Govt. Related Shifting';
+    if (lower.contains('electr')) return 'Electronic Item Shift';
+    if (lower.contains('liquid')) return 'Liquid Items Shift';
+    if (lower.contains('industr')) return 'Industrial Items Shift';
+
+    for (var type in typeList) {
+      if (lower.contains(type.toLowerCase())) return type;
     }
 
-    return 'household';
+    return typeList.first;
   }
 
   /// Gets the human-readable label
-  static String getLabel(String? key) {
-    return typeMap[normalize(key)] ?? 'Household Relocation';
+  static String getLabel(String? key, [List<String>? availableTypes]) {
+    return normalize(key, availableTypes);
+  }
+
+  /// Gets the matching Material Icon for a shifting type
+  static IconData getIcon(String? type) {
+    if (type == null) return Icons.local_shipping_outlined;
+    final lower = type.toLowerCase();
+    if (lower.contains('medic')) return Icons.medical_services_outlined;
+    if (lower.contains('house') || lower.contains('home')) return Icons.home_work_outlined;
+    if (lower.contains('office') || lower.contains('corp')) return Icons.business_outlined;
+    if (lower.contains('factor') || lower.contains('industr')) return Icons.factory_outlined;
+    if (lower.contains('mall') || lower.contains('shop')) return Icons.storefront_outlined;
+    if (lower.contains('warehous') || lower.contains('storage')) return Icons.warehouse_outlined;
+    if (lower.contains('vehic') || lower.contains('car') || lower.contains('auto')) return Icons.directions_car_outlined;
+    if (lower.contains('electr')) return Icons.devices_outlined;
+    if (lower.contains('liquid')) return Icons.water_drop_outlined;
+    if (lower.contains('govt')) return Icons.account_balance_outlined;
+    if (lower.contains('good')) return Icons.inventory_2_outlined;
+    return Icons.local_shipping_outlined;
+  }
+}
+
+/// State and controller manager for an individual extra charge item
+class ExtraChargeItem {
+  int? extraChargesId;
+  final TextEditingController nameCtrl;
+  final TextEditingController rateCtrl;
+  final TextEditingController valueCtrl;
+
+  ExtraChargeItem({
+    this.extraChargesId,
+    String name = '',
+    double rate = 0.0,
+    double value = 0.0,
+    VoidCallback? onChanged,
+  })  : nameCtrl = TextEditingController(text: name),
+        rateCtrl = TextEditingController(
+          text: rate > 0 ? (rate % 1 == 0 ? rate.toInt().toString() : rate.toString()) : '',
+        ),
+        valueCtrl = TextEditingController(
+          text: value > 0 ? (value % 1 == 0 ? value.toInt().toString() : value.toString()) : '',
+        ) {
+    if (onChanged != null) {
+      nameCtrl.addListener(onChanged);
+      rateCtrl.addListener(onChanged);
+      valueCtrl.addListener(onChanged);
+    }
+  }
+
+  void dispose() {
+    nameCtrl.dispose();
+    rateCtrl.dispose();
+    valueCtrl.dispose();
   }
 }
 
@@ -392,6 +497,7 @@ class ShiftingTypeHelper {
 /// Used by CreateCustomerController and EditCustomerController for multiple shiftings.
 class CustomerShiftingItem {
   int? shiftingId;
+  int? chargeId;
   final TextEditingController shiftFromCityCtrl;
   final TextEditingController shiftToCityCtrl;
   final TextEditingController fromAddressCtrl;
@@ -413,6 +519,11 @@ class CustomerShiftingItem {
   final TextEditingController storageChargeCtrl;
   final TextEditingController statisticalChargeCtrl;
   final TextEditingController serviceChargeCtrl;
+  final TextEditingController serviceRateCtrl;
+  final TextEditingController gstRateCtrl;
+
+  // Extra charges list
+  final RxList<ExtraChargeItem> extraCharges = <ExtraChargeItem>[].obs;
 
   // Calculated observables
   final RxDouble subtotal = 0.0.obs;
@@ -427,11 +538,12 @@ class CustomerShiftingItem {
 
   CustomerShiftingItem({
     this.shiftingId,
+    this.chargeId,
     String fromCity = '',
     String toCity = '',
     String fromAddr = '',
     String toAddr = '',
-    String type = 'household',
+    String type = 'House Shifting',
     bool isCompleted = false,
     DateTime? startDate,
     DateTime? deliveryDate,
@@ -499,10 +611,35 @@ class CustomerShiftingItem {
           text: (charges?.serviceCharge != null && charges!.serviceCharge > 0)
               ? charges.serviceCharge.toStringAsFixed(0)
               : '',
+        ),
+        serviceRateCtrl = TextEditingController(
+          text: (charges?.serviceRate != null && charges!.serviceRate > 0)
+              ? (charges.serviceRate % 1 == 0 ? charges.serviceRate.toInt().toString() : charges.serviceRate.toString())
+              : '1',
+        ),
+        gstRateCtrl = TextEditingController(
+          text: (charges?.gstRate != null && charges!.gstRate > 0)
+              ? (charges.gstRate % 1 == 0 ? charges.gstRate.toInt().toString() : charges.gstRate.toString())
+              : '18',
         ) {
-    if (charges?.gstRate != null && charges!.gstRate > 0) {
-      gstApplicable.value = charges.gstRate;
+    chargeId ??= charges?.chargeId;
+    if (charges?.extraCharges != null && charges!.extraCharges.isNotEmpty) {
+      final seen = <String>{};
+      for (var ec in charges.extraCharges) {
+        final key = '${ec.extraChargesId ?? ec.chargeName.trim().toLowerCase()}_${ec.chargeValue}_${ec.chargeRate}';
+        if (seen.add(key)) {
+          extraCharges.add(ExtraChargeItem(
+            extraChargesId: ec.extraChargesId,
+            name: ec.chargeName,
+            rate: ec.chargeRate,
+            value: ec.chargeValue,
+            onChanged: calculateTotals,
+          ));
+        }
+      }
     }
+    double initialGst = double.tryParse(gstRateCtrl.text) ?? 18.0;
+    gstApplicable.value = initialGst;
     _setupListeners();
     calculateTotals();
   }
@@ -510,6 +647,7 @@ class CustomerShiftingItem {
   factory CustomerShiftingItem.fromShifting(Shifting s) {
     return CustomerShiftingItem(
       shiftingId: s.shiftingId,
+      chargeId: s.charges.chargeId,
       fromCity: s.shiftFromCity,
       toCity: s.shiftToCity,
       fromAddr: s.fromAddress,
@@ -521,6 +659,25 @@ class CustomerShiftingItem {
       charges: s.charges,
       tokenMoney: s.tokenMoney,
     );
+  }
+
+  void addExtraCharge([ExtraCharge? ec]) {
+    extraCharges.add(ExtraChargeItem(
+      extraChargesId: ec?.extraChargesId,
+      name: ec?.chargeName ?? '',
+      rate: ec?.chargeRate ?? 0.0,
+      value: ec?.chargeValue ?? 0.0,
+      onChanged: calculateTotals,
+    ));
+    calculateTotals();
+  }
+
+  void removeExtraCharge(int index) {
+    if (index >= 0 && index < extraCharges.length) {
+      extraCharges[index].dispose();
+      extraCharges.removeAt(index);
+      calculateTotals();
+    }
   }
 
   void _setupListeners() {
@@ -535,6 +692,8 @@ class CustomerShiftingItem {
       storageChargeCtrl,
       statisticalChargeCtrl,
       serviceChargeCtrl,
+      serviceRateCtrl,
+      gstRateCtrl,
       advancePaidCtrl,
     ];
     for (var ctrl in chargeControllers) {
@@ -549,7 +708,7 @@ class CustomerShiftingItem {
   }
 
   void calculateTotals() {
-    double sum = (double.tryParse(transportChargeCtrl.text) ?? 0.0) +
+    double baseCharges = (double.tryParse(transportChargeCtrl.text) ?? 0.0) +
         (double.tryParse(packingChargeCtrl.text) ?? 0.0) +
         (double.tryParse(loadingChargeCtrl.text) ?? 0.0) +
         (double.tryParse(unloadingChargeCtrl.text) ?? 0.0) +
@@ -557,11 +716,33 @@ class CustomerShiftingItem {
         (double.tryParse(carTransportChargeCtrl.text) ?? 0.0) +
         (double.tryParse(riskInsureChargeCtrl.text) ?? 0.0) +
         (double.tryParse(storageChargeCtrl.text) ?? 0.0) +
-        (double.tryParse(statisticalChargeCtrl.text) ?? 0.0) +
-        (double.tryParse(serviceChargeCtrl.text) ?? 0.0);
+        (double.tryParse(statisticalChargeCtrl.text) ?? 0.0);
 
+    double extraSum = 0.0;
+    for (var ec in extraCharges) {
+      double val = double.tryParse(ec.valueCtrl.text) ?? 0.0;
+      if (val == 0.0) {
+        double r = double.tryParse(ec.rateCtrl.text) ?? 0.0;
+        if (r > 0 && baseCharges > 0) {
+          val = baseCharges * (r / 100);
+        }
+      }
+      extraSum += val;
+    }
+
+    double sRate = double.tryParse(serviceRateCtrl.text) ?? 1.0;
+    double sCharge = double.tryParse(serviceChargeCtrl.text) ?? 0.0;
+    // If service charge is not manually set but service rate > 0 and base charges exist
+    if (sCharge == 0.0 && sRate > 0 && (baseCharges + extraSum) > 0) {
+      sCharge = (baseCharges + extraSum) * (sRate / 100);
+    }
+
+    double sum = baseCharges + extraSum + sCharge;
     subtotal.value = sum;
-    gstAmount.value = sum * (gstApplicable.value / 100);
+
+    double gRate = double.tryParse(gstRateCtrl.text) ?? 18.0;
+    gstApplicable.value = gRate;
+    gstAmount.value = sum * (gRate / 100);
     totalAmount.value = sum + gstAmount.value;
     double advance = double.tryParse(advancePaidCtrl.text) ?? 0.0;
     netPayable.value = totalAmount.value - advance;
@@ -569,6 +750,7 @@ class CustomerShiftingItem {
 
   Shifting toShiftingModel() {
     final charges = Charges(
+      chargeId: chargeId,
       transportCharge: double.tryParse(transportChargeCtrl.text) ?? 0.0,
       packingCharge: double.tryParse(packingChargeCtrl.text) ?? 0.0,
       loadingCharge: double.tryParse(loadingChargeCtrl.text) ?? 0.0,
@@ -579,8 +761,30 @@ class CustomerShiftingItem {
       storageCharge: double.tryParse(storageChargeCtrl.text) ?? 0.0,
       statisticalCharge: double.tryParse(statisticalChargeCtrl.text) ?? 0.0,
       serviceCharge: double.tryParse(serviceChargeCtrl.text) ?? 0.0,
-      gstRate: gstApplicable.value,
+      serviceRate: double.tryParse(serviceRateCtrl.text) ?? 1.0,
+      gstRate: double.tryParse(gstRateCtrl.text) ?? 18.0,
       gstCharge: gstAmount.value,
+      extraCharges: () {
+        final seen = <String>{};
+        final uniqueExtras = <ExtraCharge>[];
+        for (var e in extraCharges) {
+          final name = e.nameCtrl.text.trim();
+          final rate = double.tryParse(e.rateCtrl.text) ?? 0.0;
+          final val = double.tryParse(e.valueCtrl.text) ?? 0.0;
+          if (name.isNotEmpty || val > 0) {
+            final key = '${e.extraChargesId ?? name.toLowerCase()}_${val}_${rate}';
+            if (seen.add(key)) {
+              uniqueExtras.add(ExtraCharge(
+                extraChargesId: e.extraChargesId,
+                chargeName: name,
+                chargeRate: rate,
+                chargeValue: val,
+              ));
+            }
+          }
+        }
+        return uniqueExtras;
+      }(),
       advancePaid: double.tryParse(advancePaidCtrl.text) ?? 0.0,
     );
 
@@ -615,6 +819,11 @@ class CustomerShiftingItem {
     storageChargeCtrl.dispose();
     statisticalChargeCtrl.dispose();
     serviceChargeCtrl.dispose();
+    serviceRateCtrl.dispose();
+    gstRateCtrl.dispose();
+    for (var ec in extraCharges) {
+      ec.dispose();
+    }
   }
 }
 

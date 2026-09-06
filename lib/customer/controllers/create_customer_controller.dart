@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cargo_setu/customer/models/customer_model.dart';
@@ -7,6 +8,9 @@ class CreateCustomerController extends GetxController {
   final CustomerService _service = CustomerService();
 
   final isLoading = false.obs;
+
+  // Shifting types observable (initialized with default 13 types, updated from API)
+  final shiftingTypesList = <String>[...ShiftingTypeHelper.defaultTypes].obs;
 
   // Controllers for personal details
   final firstNameCtrl = TextEditingController();
@@ -48,6 +52,12 @@ class CreateCustomerController extends GetxController {
   TextEditingController get storageChargeCtrl => currentShifting.storageChargeCtrl;
   TextEditingController get statisticalChargeCtrl => currentShifting.statisticalChargeCtrl;
   TextEditingController get serviceChargeCtrl => currentShifting.serviceChargeCtrl;
+  TextEditingController get serviceRateCtrl => currentShifting.serviceRateCtrl;
+  TextEditingController get gstRateCtrl => currentShifting.gstRateCtrl;
+  RxList<ExtraChargeItem> get extraCharges => currentShifting.extraCharges;
+  void addExtraCharge([ExtraCharge? ec]) => currentShifting.addExtraCharge(ec);
+  void removeExtraCharge(int index) => currentShifting.removeExtraCharge(index);
+
   RxDouble get subtotal => currentShifting.subtotal;
   RxDouble get gstAmount => currentShifting.gstAmount;
   RxDouble get totalAmount => currentShifting.totalAmount;
@@ -61,6 +71,21 @@ class CreateCustomerController extends GetxController {
     super.onInit();
     shiftings.add(CustomerShiftingItem());
     _setupPersonalFieldListeners();
+    loadShiftingTypes();
+  }
+
+  Future<void> loadShiftingTypes() async {
+    try {
+      final types = await _service.getShiftingTypes();
+      if (types.isNotEmpty) {
+        shiftingTypesList.assignAll(types.toSet().toList());
+        for (var s in shiftings) {
+          s.shiftingType.value = ShiftingTypeHelper.normalize(s.shiftingType.value, shiftingTypesList);
+        }
+      }
+    } catch (e) {
+      log('⚠️ Error loading shifting types: $e');
+    }
   }
 
   void _setupPersonalFieldListeners() {

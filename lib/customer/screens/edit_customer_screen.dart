@@ -484,28 +484,35 @@ class EditCustomerScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: AppColors.secondaryContainer,
-                      borderRadius: BorderRadius.circular(8),
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: AppColors.secondaryContainer,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.local_shipping, color: AppColors.onSecondaryContainer, size: 18),
                     ),
-                    child: const Icon(Icons.local_shipping, color: AppColors.onSecondaryContainer, size: 18),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Shifting #${ctrl.activeShiftIndex.value + 1} Details',
-                    style: const TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Shifting #${ctrl.activeShiftIndex.value + 1} Details',
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
@@ -519,48 +526,116 @@ class EditCustomerScreen extends StatelessWidget {
           const Divider(height: 24, thickness: 1),
           const Text('Shifting Category & Type', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12, fontWeight: FontWeight.w500)),
           const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryContainer,
-                    borderRadius: BorderRadius.circular(4),
+          Obx(() {
+            final typeList = ctrl.shiftingTypesList.isNotEmpty
+                ? ctrl.shiftingTypesList.toSet().toList()
+                : ShiftingTypeHelper.defaultTypes;
+            final currentVal = ShiftingTypeHelper.normalize(ctrl.shiftingType.value, typeList);
+            final selectedValue = typeList.contains(currentVal) ? currentVal : typeList.first;
+
+            return DropdownButtonFormField<String>(
+              value: selectedValue,
+              isExpanded: true,
+              dropdownColor: AppColors.surfaceContainerLowest,
+              icon: const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: AppColors.primary,
+                size: 22,
+              ),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: AppColors.surfaceContainerLow,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.only(left: 10, right: 10),
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryContainer.withValues(alpha: 0.7),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Icon(
+                      ShiftingTypeHelper.getIcon(selectedValue),
+                      color: AppColors.primary,
+                      size: 18,
+                    ),
                   ),
-                  child: const Icon(Icons.medical_services, color: AppColors.onPrimary, size: 16),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Obx(() {
-                    final normalizedVal = ShiftingTypeHelper.normalize(ctrl.shiftingType.value);
-                    return DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: normalizedVal,
-                        isExpanded: true,
-                        icon: const Icon(Icons.arrow_drop_down, color: AppColors.onSurface),
-                        onChanged: (v) {
-                          if (v != null) ctrl.shiftingType.value = v;
-                        },
-                        items: ShiftingTypeHelper.typeMap.entries.map((e) {
-                          return DropdownMenuItem<String>(
-                            value: e.key,
-                            child: Text(e.value, style: const TextStyle(fontSize: 14)),
-                          );
-                        }).toList(),
+                prefixIconConstraints: const BoxConstraints(minWidth: 52, maxHeight: 36),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.surfaceContainerHigh, width: 1.0),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.surfaceContainerHigh, width: 1.0),
+                ),
+              ),
+              selectedItemBuilder: (context) {
+                return typeList.map((type) {
+                  return Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      type,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.onSurface,
                       ),
-                    );
-                  }),
-                ),
-              ],
-            ),
-          ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }).toList();
+              },
+              items: typeList.map((type) {
+                final isSelected = type == selectedValue;
+                return DropdownMenuItem<String>(
+                  value: type,
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.primaryContainer
+                              : AppColors.surfaceContainerHigh.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Icon(
+                          ShiftingTypeHelper.getIcon(type),
+                          color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant,
+                          size: 16,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          type,
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected ? AppColors.primary : AppColors.onSurface,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (isSelected)
+                        const Icon(Icons.check_rounded, size: 18, color: AppColors.primary),
+                    ],
+                  ),
+                );
+              }).toList(),
+              onChanged: (v) {
+                if (v != null) ctrl.shiftingType.value = v;
+              },
+            );
+          }),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(12),
@@ -602,13 +677,25 @@ class EditCustomerScreen extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                         decoration: BoxDecoration(
-                          color: AppColors.surfaceContainerLow,
+                          color: AppColors.surfaceContainerLowest,
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.surfaceContainerHigh, width: 1.0),
                         ),
-                        child: Obx(() => Text(
-                              ctrl.shiftingStartDate.value != null ? ctrl.shiftingStartDate.value!.toString().substring(0, 10) : 'Select Date',
-                              style: const TextStyle(fontSize: 14),
-                            )),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_today, size: 16, color: AppColors.secondary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Obx(() => Text(
+                                    ctrl.shiftingStartDate.value != null ? ctrl.shiftingStartDate.value!.toString().substring(0, 10) : 'Select Date',
+                                    style: const TextStyle(fontSize: 13),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  )),
+                            ),
+                            const Icon(Icons.arrow_drop_down, size: 18, color: AppColors.onSurfaceVariant),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -634,13 +721,25 @@ class EditCustomerScreen extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                         decoration: BoxDecoration(
-                          color: AppColors.surfaceContainerLow,
+                          color: AppColors.surfaceContainerLowest,
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.surfaceContainerHigh, width: 1.0),
                         ),
-                        child: Obx(() => Text(
-                              ctrl.expectedDeliveryDate.value != null ? ctrl.expectedDeliveryDate.value!.toString().substring(0, 10) : 'Select Date',
-                              style: const TextStyle(fontSize: 14),
-                            )),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.event_available, size: 16, color: AppColors.secondary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Obx(() => Text(
+                                    ctrl.expectedDeliveryDate.value != null ? ctrl.expectedDeliveryDate.value!.toString().substring(0, 10) : 'Select Date',
+                                    style: const TextStyle(fontSize: 13),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  )),
+                            ),
+                            const Icon(Icons.arrow_drop_down, size: 18, color: AppColors.onSurfaceVariant),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -649,50 +748,121 @@ class EditCustomerScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
+
+          // Token / Advance Paid
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: AppColors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.surfaceContainerHigh),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryContainer,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.verified, color: AppColors.onPrimary, size: 18),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Token / Advance Paid', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11)),
-                        SizedBox(
-                          width: 120,
-                          child: TextField(
-                            controller: ctrl.advancePaidCtrl,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}'))],
-                            style: const TextStyle(color: AppColors.primary, fontSize: 18, fontWeight: FontWeight.bold),
-                            decoration: const InputDecoration(
-                              isDense: true,
-                              contentPadding: EdgeInsets.zero,
-                              border: InputBorder.none,
-                              prefixText: '₹',
-                              prefixStyle: TextStyle(color: AppColors.primary, fontSize: 18, fontWeight: FontWeight.bold),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 30,
+                            height: 30,
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryContainer,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.payments_outlined, color: AppColors.onPrimary, size: 18),
+                          ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Token / Advance Received',
+                                  style: TextStyle(
+                                    color: AppColors.onSurface,
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  'Booking advance paid by customer',
+                                  style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
                           ),
-                        )
-                      ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondaryContainer.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        'Advance Deduction',
+                        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: AppColors.secondary),
+                      ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.surfaceContainerHigh, width: 1.2),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  child: Row(
+                    children: [
+                      const Text(
+                        '₹',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: ctrl.advancePaidCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                            LengthLimitingTextInputFormatter(10),
+                          ],
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            hintText: 'Enter advance amount (e.g. 5000)',
+                            hintStyle: TextStyle(
+                              color: AppColors.onSurfaceVariant,
+                              fontSize: 13,
+                              fontWeight: FontWeight.normal,
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -732,12 +902,28 @@ class EditCustomerScreen extends StatelessWidget {
                 child: const Icon(Icons.payments, color: AppColors.onPrimary, size: 18),
               ),
               const SizedBox(width: 8),
-              Text(
-                'Itemized Shifting Charges (Shift #${ctrl.activeShiftIndex.value + 1})',
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
+              Expanded(
+                child: Text(
+                  'Itemized Charges (Shift #${ctrl.activeShiftIndex.value + 1})',
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  '10 Items',
+                  style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11, fontWeight: FontWeight.w500),
                 ),
               ),
             ],
@@ -752,7 +938,9 @@ class EditCustomerScreen extends StatelessWidget {
           _buildChargeRow('Risk / Insurance Charge', ctrl.riskInsureChargeCtrl),
           _buildChargeRow('Storage Charge', ctrl.storageChargeCtrl),
           _buildChargeRow('Statistical Charge', ctrl.statisticalChargeCtrl),
-          _buildChargeRow('Service Charge', ctrl.serviceChargeCtrl),
+          _buildServiceChargeRow(ctrl),
+          const SizedBox(height: 12),
+          _buildExtraChargesSection(ctrl),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(16),
@@ -775,16 +963,36 @@ class EditCustomerScreen extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            const Text('GST Applicable', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14)),
+                            const Text('GST Rate', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14)),
                             const SizedBox(width: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              width: 52,
+                              height: 26,
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
                               decoration: BoxDecoration(
-                                color: AppColors.surfaceContainer,
+                                color: AppColors.surfaceContainerLowest,
                                 borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: AppColors.surfaceContainerHigh),
                               ),
-                              child: Text('${ctrl.gstApplicable.value}%', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
-                            )
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: ctrl.gstRateCtrl,
+                                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
+                                      decoration: const InputDecoration(
+                                        isDense: true,
+                                        contentPadding: EdgeInsets.zero,
+                                        border: InputBorder.none,
+                                      ),
+                                    ),
+                                  ),
+                                  const Text('%', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                         Text('₹${ctrl.gstAmount.value.toStringAsFixed(2)}', style: const TextStyle(color: AppColors.onSurface, fontSize: 14, fontWeight: FontWeight.w600)),
@@ -859,46 +1067,367 @@ class EditCustomerScreen extends StatelessWidget {
   Widget _buildChargeRow(String label, TextEditingController controller) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLow,
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.surfaceContainerHigh.withValues(alpha: 0.5)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 14)),
-          Row(
-            children: [
-              const Text('₹', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
-              const SizedBox(width: 4),
-              SizedBox(
-                width: 90,
-                child: TextField(
-                  controller: controller,
-                  textAlign: TextAlign.right,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-                    LengthLimitingTextInputFormatter(10),
-                  ],
-                  style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 14),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                    fillColor: AppColors.surfaceContainerLowest,
-                    filled: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(4),
-                      borderSide: BorderSide.none,
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            width: 105,
+            height: 38,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: AppColors.surfaceContainerHigh, width: 1.2),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  alignment: Alignment.center,
+                  child: const Text(
+                    '₹',
+                    style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ),
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    textAlign: TextAlign.right,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                      LengthLimitingTextInputFormatter(10),
+                    ],
+                    style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13.5),
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      hintText: '0',
+                      hintStyle: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13),
+                      contentPadding: EdgeInsets.only(right: 8, top: 8, bottom: 8),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
                     ),
                   ),
                 ),
-              )
-            ],
-          )
+              ],
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildServiceChargeRow(EditCustomerController ctrl) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.surfaceContainerHigh.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              const Text(
+                'Service Charge',
+                style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 52,
+                height: 28,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: AppColors.surfaceContainerHigh),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: ctrl.serviceRateCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                    const Text('%', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 8),
+          Container(
+            width: 105,
+            height: 38,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: AppColors.surfaceContainerHigh, width: 1.2),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  alignment: Alignment.center,
+                  child: const Text(
+                    '₹',
+                    style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ),
+                Expanded(
+                  child: TextField(
+                    controller: ctrl.serviceChargeCtrl,
+                    textAlign: TextAlign.right,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                      LengthLimitingTextInputFormatter(10),
+                    ],
+                    style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13.5),
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      hintText: '0',
+                      hintStyle: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13),
+                      contentPadding: EdgeInsets.only(right: 8, top: 8, bottom: 8),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExtraChargesSection(EditCustomerController ctrl) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: AppColors.secondaryContainer.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(Icons.playlist_add, color: AppColors.secondary, size: 16),
+                ),
+                const SizedBox(width: 8),
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Extra Charges',
+                      style: TextStyle(
+                        color: AppColors.onSurface,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      'Custom fees (e.g. stairs, crating, toll)',
+                      style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            ElevatedButton.icon(
+              onPressed: () => ctrl.addExtraCharge(),
+              icon: const Icon(Icons.add, size: 14),
+              label: const Text('Add Charge', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Obx(() {
+          if (ctrl.extraCharges.isEmpty) {
+            return Container(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLow.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.surfaceContainerHigh.withValues(alpha: 0.8)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: AppColors.onSurfaceVariant),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'No extra charges added. Tap "+ Add Charge" to add optional custom charges.',
+                      style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11.5),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return Column(
+            children: List.generate(ctrl.extraCharges.length, (i) {
+              final ec = ctrl.extraCharges[i];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.surfaceContainerHigh.withValues(alpha: 0.6)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Container(
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceContainerLowest,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: AppColors.surfaceContainerHigh),
+                        ),
+                        child: TextField(
+                          controller: ec.nameCtrl,
+                          style: const TextStyle(fontSize: 13, color: AppColors.onSurface),
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            hintText: 'Charge name (e.g. Toll)',
+                            hintStyle: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                            border: InputBorder.none,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      width: 50,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainerLowest,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: AppColors.surfaceContainerHigh),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: ec.rateCtrl,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
+                              decoration: const InputDecoration(
+                                isDense: true,
+                                hintText: '0',
+                                hintStyle: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
+                                contentPadding: EdgeInsets.zero,
+                                border: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.only(right: 3),
+                            child: Text('%', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      width: 82,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainerLowest,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: AppColors.surfaceContainerHigh),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.only(left: 6, right: 2),
+                            alignment: Alignment.center,
+                            child: const Text('₹', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13)),
+                          ),
+                          Expanded(
+                            child: TextField(
+                              controller: ec.valueCtrl,
+                              textAlign: TextAlign.right,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                                LengthLimitingTextInputFormatter(10),
+                              ],
+                              style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13),
+                              decoration: const InputDecoration(
+                                isDense: true,
+                                hintText: '0',
+                                hintStyle: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
+                                contentPadding: EdgeInsets.only(right: 6, top: 8, bottom: 8),
+                                border: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Color(0xFFDC2626), size: 18),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                      tooltip: 'Remove',
+                      onPressed: () => ctrl.removeExtraCharge(i),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          );
+        }),
+      ],
     );
   }
 
@@ -929,9 +1458,13 @@ class EditCustomerScreen extends StatelessWidget {
             filled: true,
             fillColor: AppColors.surfaceContainerLow,
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            border: OutlineInputBorder(
+            enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide.none,
+              borderSide: const BorderSide(color: AppColors.surfaceContainerHigh, width: 1.0),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
             ),
           ),
         ),

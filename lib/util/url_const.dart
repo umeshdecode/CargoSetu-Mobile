@@ -1,6 +1,7 @@
 /// All API endpoint URLs for the CargoSetu backend.
 class Urls {
-  static const String baseUrl = "http://192.168.1.6:31201";
+  // static const String baseUrl = "http://192.168.1.6:31201";
+  static const String baseUrl = "https://code-setu-app.onrender.com";
   // static const String baseUrl = "https://gameless-vacillating-stevie.ngrok-free.dev";
 
   // ─── AUTH ───────────────────────────────────────────────
@@ -32,4 +33,14 @@ class Urls {
   // ─── ROLES & PERMISSIONS ────────────────────────────────
   static const String roles = "$baseUrl/api/v2/cargosetu/role";
   static const String permissions = "$baseUrl/api/v2/cargosetu/permission";
+
+  // ─── TEMPLATES ──────────────────────────────────────────
+  static const String templates = "$baseUrl/api/v2/cargosetu/templates";
+  static const String templatesByType = "$templates/by-type";
+  static String templateDefault(int id) => "$templates/$id/default";
+  static String templatePreviewHtml(int id) => "$templates/$id/preview-html";
+  static String quotationPdf(int shiftingId, {int? templateId}) =>
+      "$templates/quotation/$shiftingId/pdf${templateId != null ? '?templateId=$templateId' : ''}";
+  static String sendQuotation(int shiftingId, {int? templateId}) =>
+      "$templates/quotation/$shiftingId/send${templateId != null ? '?templateId=$templateId' : ''}";
 }

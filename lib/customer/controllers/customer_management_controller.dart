@@ -85,7 +85,7 @@ class CustomerManagementController extends GetxController {
         _currentPage++;
       }
     } catch (e) {
-      log('⚠️ Error fetching customers: $e');
+      log('Error fetching customers: $e');
       loadError.value = 'Failed to load customers. Pull to try again.';
     } finally {
       isLoading.value = false;

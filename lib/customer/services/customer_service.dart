@@ -144,10 +144,38 @@ class CustomerService {
           return list.map((e) => e.toString()).toList();
         }
       }
-      return ['medical', 'household', 'office', 'vehicle'];
+      return const [
+        'House Shifting',
+        'Office Shifting',
+        'Factory Shifting',
+        'Mall Shifting',
+        'Shop Shifting',
+        'Warehouse Shifting',
+        'Goods Shifting',
+        'Govt. Related Shifting',
+        'Medical Item Shifting',
+        'Electronic Item Shift',
+        'Liquid Items Shift',
+        'Industrial Items Shift',
+        'Others',
+      ];
     } catch (e) {
       log('⚠️ Get shifting types fallback: $e');
-      return ['medical', 'household', 'office', 'vehicle'];
+      return const [
+        'House Shifting',
+        'Office Shifting',
+        'Factory Shifting',
+        'Mall Shifting',
+        'Shop Shifting',
+        'Warehouse Shifting',
+        'Goods Shifting',
+        'Govt. Related Shifting',
+        'Medical Item Shifting',
+        'Electronic Item Shift',
+        'Liquid Items Shift',
+        'Industrial Items Shift',
+        'Others',
+      ];
     }
   }
 }

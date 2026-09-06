@@ -13,6 +13,9 @@ class EditCustomerController extends GetxController {
   final isLoading = false.obs;
   final isSaving = false.obs;
 
+  // Shifting types observable (initialized with default 13 types, updated from API)
+  final shiftingTypesList = <String>[...ShiftingTypeHelper.defaultTypes].obs;
+
   // Personal details controllers
   late final TextEditingController firstNameCtrl;
   late final TextEditingController lastNameCtrl;
@@ -48,6 +51,12 @@ class EditCustomerController extends GetxController {
   TextEditingController get storageChargeCtrl => currentShifting.storageChargeCtrl;
   TextEditingController get statisticalChargeCtrl => currentShifting.statisticalChargeCtrl;
   TextEditingController get serviceChargeCtrl => currentShifting.serviceChargeCtrl;
+  TextEditingController get serviceRateCtrl => currentShifting.serviceRateCtrl;
+  TextEditingController get gstRateCtrl => currentShifting.gstRateCtrl;
+  RxList<ExtraChargeItem> get extraCharges => currentShifting.extraCharges;
+  void addExtraCharge([ExtraCharge? ec]) => currentShifting.addExtraCharge(ec);
+  void removeExtraCharge(int index) => currentShifting.removeExtraCharge(index);
+
   RxDouble get subtotal => currentShifting.subtotal;
   RxDouble get gstAmount => currentShifting.gstAmount;
   RxDouble get totalAmount => currentShifting.totalAmount;
@@ -61,6 +70,21 @@ class EditCustomerController extends GetxController {
     super.onInit();
     _initFromCustomer(initialCustomer);
     loadFullCustomerDetails();
+    loadShiftingTypes();
+  }
+
+  Future<void> loadShiftingTypes() async {
+    try {
+      final types = await _service.getShiftingTypes();
+      if (types.isNotEmpty) {
+        shiftingTypesList.assignAll(types.toSet().toList());
+        for (var s in shiftings) {
+          s.shiftingType.value = ShiftingTypeHelper.normalize(s.shiftingType.value, shiftingTypesList);
+        }
+      }
+    } catch (e) {
+      log('⚠️ Error loading shifting types: $e');
+    }
   }
 
   void _initFromCustomer(CustomerModel c) {

@@ -241,15 +241,20 @@ class ApiRequest {
   }
 
   /// GET request.
-  Future<Response> get({
+  Future<Response<T>> get<T>({
     required String url,
     Map<String, dynamic>? queryParams,
     String? token,
+    ResponseType? responseType,
   }) async {
-    return _dio.get(
+    Options? opts = _tokenOverride(token);
+    if (responseType != null) {
+      opts = (opts ?? Options()).copyWith(responseType: responseType);
+    }
+    return _dio.get<T>(
       url,
       queryParameters: queryParams,
-      options: _tokenOverride(token),
+      options: opts,
     );
   }
 
