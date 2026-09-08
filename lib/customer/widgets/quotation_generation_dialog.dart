@@ -646,14 +646,7 @@ class _QuotationGenerationDialogState extends State<QuotationGenerationDialog> {
                                 ),
                             ],
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Format: HTML Template (${tmpl.type})',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
+
                         ],
                       ),
                     ),
@@ -1071,23 +1064,9 @@ class _TemplateHtmlPreviewDialogState extends State<_TemplateHtmlPreviewDialog> 
 
   void _openFullScreen() {
     Get.to(
-      () => Scaffold(
-        appBar: AppBar(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          title: Text(
-            '${widget.templateName} (${widget.templateType})',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.close),
-              tooltip: 'Close Full Screen',
-              onPressed: () => Get.back(),
-            ),
-          ],
-        ),
-        body: WebViewWidget(controller: _controller),
+      () => _FullScreenHtmlPreviewScreen(
+        htmlContent: widget.htmlContent,
+        title: '${widget.templateName} (${widget.templateType})',
       ),
       transition: Transition.fadeIn,
     );
@@ -1139,11 +1118,7 @@ class _TemplateHtmlPreviewDialogState extends State<_TemplateHtmlPreviewDialog> 
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'HTML / CSS Template',
-                            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                          ),
+
                         ],
                       ),
                     ],
@@ -1218,6 +1193,85 @@ class _TemplateHtmlPreviewDialogState extends State<_TemplateHtmlPreviewDialog> 
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _FullScreenHtmlPreviewScreen extends StatefulWidget {
+  final String htmlContent;
+  final String title;
+
+  const _FullScreenHtmlPreviewScreen({
+    required this.htmlContent,
+    required this.title,
+  });
+
+  @override
+  State<_FullScreenHtmlPreviewScreen> createState() => _FullScreenHtmlPreviewScreenState();
+}
+
+class _FullScreenHtmlPreviewScreenState extends State<_FullScreenHtmlPreviewScreen> {
+  late final WebViewController _controller;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    String html = widget.htmlContent;
+    if (!html.contains('name="viewport"')) {
+      if (html.contains('<head>')) {
+        html = html.replaceFirst(
+          '<head>',
+          '<head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">',
+        );
+      } else if (html.contains('<html>')) {
+        html = html.replaceFirst(
+          '<html>',
+          '<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes"></head>',
+        );
+      }
+    }
+
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..enableZoom(true)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (_) {
+            if (mounted) setState(() => _isLoading = false);
+          },
+        ),
+      )
+      ..loadHtmlString(html);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        title: Text(
+          widget.title,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.close),
+            tooltip: 'Close Full Screen',
+            onPressed: () => Get.back(),
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          WebViewWidget(controller: _controller),
+          if (_isLoading)
+            const Center(
+              child: CircularProgressIndicator(color: AppColors.primaryBlue),
+            ),
+        ],
       ),
     );
   }

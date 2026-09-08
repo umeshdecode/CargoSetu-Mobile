@@ -105,7 +105,7 @@ class DashboardScreen extends StatelessWidget {
                   child: _buildDocCard(
                     icon: Icons.calculate_outlined,
                     label: 'Quotations',
-                    onTap: () {},
+                    onTap: () { Get.toNamed(AppRoutes.quotations); },
                   ),
                 ),
                 const SizedBox(width: 12),

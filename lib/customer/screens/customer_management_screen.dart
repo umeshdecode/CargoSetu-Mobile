@@ -709,7 +709,7 @@ class CustomerManagementScreen extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const PopupMenuDivider(),
+                      const PopupMenuDivider(height: 1),
                       const PopupMenuItem(
                         value: 'delete',
                         child: Row(

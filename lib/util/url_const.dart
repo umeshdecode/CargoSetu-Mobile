@@ -43,4 +43,8 @@ class Urls {
       "$templates/quotation/$shiftingId/pdf${templateId != null ? '?templateId=$templateId' : ''}";
   static String sendQuotation(int shiftingId, {int? templateId}) =>
       "$templates/quotation/$shiftingId/send${templateId != null ? '?templateId=$templateId' : ''}";
+
+  // ─── SHIFTINGS ──────────────────────────────────────────
+  static const String shifts = "$baseUrl/api/v2/cargosetu/shifts";
+  static const String shiftsSearch = "$shifts/search";
 }

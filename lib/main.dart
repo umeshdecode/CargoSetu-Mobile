@@ -14,45 +14,42 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'theme/app_theme.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await GetStorage.init();
-
-  // Initialize core services
-  Get.put(SessionService());
-  Get.put(ConnectivityService());
-
-  // ─── Global Error Handling ───────────────────────────────
-  // Override Flutter's default error widget (red screen) with our custom error screen
-  ErrorWidget.builder = (FlutterErrorDetails details) {
-    // In debug mode, show the standard Flutter error for easier debugging
-    if (kDebugMode) {
-      return ErrorWidget(details.exception);
-    }
-    // In release mode, show our custom transport-themed error screen
-    return ErrorScreen(
-      error: details.exceptionAsString(),
-      onRetry: () {
-        // Try to navigate back to dashboard
-        if (Get.context != null) {
-          Get.offAllNamed(AppRoutes.dashboard);
-        }
-      },
-    );
-  };
-
-  // Catch unhandled Flutter framework errors
-  FlutterError.onError = (FlutterErrorDetails details) {
-    log('🚨 Flutter Error: ${details.exceptionAsString()}');
-    log('Stack: ${details.stack}');
-    if (kDebugMode) {
-      FlutterError.dumpErrorToConsole(details);
-    }
-  };
-
-  // Catch async errors not caught by Flutter framework
+void main() {
   runZonedGuarded(
-    () {
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+
+      await GetStorage.init();
+
+      // Initialize core services
+      Get.put(SessionService());
+      Get.put(ConnectivityService());
+
+      // ─── Global Error Handling ───────────────────────────────
+      // Override Flutter's default error widget (red screen) with custom error screen
+      ErrorWidget.builder = (FlutterErrorDetails details) {
+        if (kDebugMode) {
+          return ErrorWidget(details.exception);
+        }
+        return ErrorScreen(
+          error: details.exceptionAsString(),
+          onRetry: () {
+            if (Get.context != null) {
+              Get.offAllNamed(AppRoutes.dashboard);
+            }
+          },
+        );
+      };
+
+      // Catch unhandled Flutter framework errors
+      FlutterError.onError = (FlutterErrorDetails details) {
+        log('🚨 Flutter Error: ${details.exceptionAsString()}');
+        log('Stack: ${details.stack}');
+        if (kDebugMode) {
+          FlutterError.dumpErrorToConsole(details);
+        }
+      };
+
       runApp(const CargoSetuApp());
     },
     (error, stackTrace) {
@@ -73,13 +70,11 @@ class CargoSetuApp extends StatelessWidget {
       () => GetMaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Cargo Setu',
-
         theme: AppTheme.light,
         darkTheme: AppTheme.dark,
         themeMode: themeController.isDarkMode.value
             ? ThemeMode.dark
             : ThemeMode.light,
-
         initialRoute: AppRoutes.splash,
         getPages: AppPages.pages,
       ),
