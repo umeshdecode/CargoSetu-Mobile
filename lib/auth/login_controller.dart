@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 
+import 'package:cargo_setu/network/api_request.dart';
 import 'login_provider.dart';
 import 'model/login_request.dart';
 import 'model/login_response.dart';
@@ -101,11 +102,8 @@ class LoginController extends GetxController {
       /// SAVE FULL SESSION (token + roles + permissions)
       await _saveSessionAndCheckCompany(loginRes);
     } on DioException catch (e) {
-      final data = e.response?.data;
-      final msg = (data is Map)
-          ? (data['responseMessage'] ?? data['message'])
-          : null;
-      Get.snackbar("Login Failed", msg ?? data?.toString() ?? "Server error");
+      final msg = ApiRequest.formatErrorMessage(e, defaultMessage: "Login Failed, Try after Some time");
+      Get.snackbar("Login Failed", msg);
     } catch (e) {
       Get.snackbar("Login Failed", e.toString());
     } finally {
@@ -136,11 +134,8 @@ class LoginController extends GetxController {
         }
       }
     } on DioException catch (e) {
-      final data = e.response?.data;
-      final msg = (data is Map)
-          ? (data['responseMessage'] ?? data['message'])
-          : null;
-      Get.snackbar("Error", msg ?? data?.toString() ?? "Failed to send OTP");
+      final msg = ApiRequest.formatErrorMessage(e, defaultMessage: "Failed to send OTP");
+      Get.snackbar("Error", msg);
     } catch (e) {
       Get.snackbar("Error", e.toString());
     } finally {
@@ -165,14 +160,8 @@ class LoginController extends GetxController {
       /// SAVE FULL SESSION (token + roles + permissions)
       await _saveSessionAndCheckCompany(loginRes);
     } on DioException catch (e) {
-      final data = e.response?.data;
-      final msg = (data is Map)
-          ? (data['responseMessage'] ?? data['message'])
-          : null;
-      Get.snackbar(
-        "Error",
-        msg ?? data?.toString() ?? "Invalid or expired OTP",
-      );
+      final msg = ApiRequest.formatErrorMessage(e, defaultMessage: "Invalid or expired OTP");
+      Get.snackbar("Error", msg);
     } catch (e) {
       Get.snackbar("Error", e.toString());
     } finally {

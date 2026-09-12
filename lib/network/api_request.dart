@@ -25,7 +25,7 @@ class ApiRequest {
   bool _isRefreshing = false;
 
   /// User-friendly error message formatter that prevents raw stacktraces from being shown to users.
-  static String formatErrorMessage(dynamic error, {String defaultMessage = 'An unexpected error occurred'}) {
+  static String formatErrorMessage(dynamic error, {String defaultMessage = 'Something went wrong,Try Later'}) {
     if (error is DioException) {
       switch (error.type) {
         case DioExceptionType.connectionTimeout:
