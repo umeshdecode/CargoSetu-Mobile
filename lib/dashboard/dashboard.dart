@@ -133,7 +133,9 @@ class DashboardScreen extends StatelessWidget {
                   child: _buildDocCard(
                     icon: Icons.inventory_2_outlined,
                     label: 'Packing Lists',
-                    onTap: () {},
+                    onTap: () {
+                      Get.toNamed(AppRoutes.packingList);
+                    },
                   ),
                 ),
               ],

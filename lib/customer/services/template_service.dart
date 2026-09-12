@@ -154,9 +154,43 @@ class TemplateService {
 
   /// Generate and send quotation to customer's email
   Future<Map<String, dynamic>> sendQuotation(int shiftingId, {int? templateId}) async {
+    return sendDocument(docType: 'QUOTATION', shiftingId: shiftingId, templateId: templateId);
+  }
+
+  /// Download document PDF bytes (docType: 'QUOTATION', 'PACKING_LIST', etc.)
+  Future<List<int>?> downloadDocumentPdf({
+    required String docType,
+    required int shiftingId,
+    int? templateId,
+  }) async {
+    try {
+      final response = await _api.get<List<int>>(
+        url: Urls.documentPdf(docType, shiftingId, templateId: templateId),
+        responseType: ResponseType.bytes,
+        headers: {
+          'Accept': 'application/pdf, */*',
+        },
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        return response.data;
+      }
+      return null;
+    } catch (e) {
+      log('❌ Download $docType PDF error: $e');
+      rethrow;
+    }
+  }
+
+  /// Generate and send document to customer's email (docType: 'QUOTATION', 'PACKING_LIST', etc.)
+  Future<Map<String, dynamic>> sendDocument({
+    required String docType,
+    required int shiftingId,
+    int? templateId,
+  }) async {
     try {
       final response = await _api.post(
-        url: Urls.sendQuotation(shiftingId, templateId: templateId),
+        url: Urls.sendDocument(docType, shiftingId, templateId: templateId),
       );
 
       if (response.statusCode == 200) {
@@ -166,15 +200,15 @@ class TemplateService {
           return {
             'success': isSuccess,
             'message': body['responseMessege'] ??
-                (isSuccess ? 'Quotation sent successfully' : 'Failed to send quotation'),
+                (isSuccess ? 'Document sent successfully' : 'Failed to send document'),
           };
         }
-        return {'success': true, 'message': 'Quotation sent successfully'};
+        return {'success': true, 'message': 'Document sent successfully'};
       }
-      return {'success': false, 'message': 'Failed to send quotation'};
+      return {'success': false, 'message': 'Failed to send document'};
     } catch (e) {
-      log('❌ Send quotation error: $e');
-      String msg = 'Failed to send quotation';
+      log('❌ Send $docType error: $e');
+      String msg = 'Failed to send document';
       if (e is DioException && e.response?.data is Map) {
         msg = e.response?.data['responseMessege'] ?? e.response?.data['message'] ?? msg;
       }

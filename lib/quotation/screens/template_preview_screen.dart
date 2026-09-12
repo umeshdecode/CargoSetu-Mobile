@@ -1,3 +1,4 @@
+import 'package:cargo_setu/packing_list/widgets/document_action_sheet.dart';
 import 'package:cargo_setu/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -5,12 +6,18 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../models/shifting_list_model.dart';
 import '../../customer/models/template_model.dart';
 import '../../customer/services/template_service.dart';
-import '../widgets/quotation_action_sheet.dart';
 
 class TemplatePreviewScreen extends StatefulWidget {
+  final String docType;
+  final String docTitle;
   final ShiftingListItem shifting;
 
-  const TemplatePreviewScreen({super.key, required this.shifting});
+  const TemplatePreviewScreen({
+    super.key,
+    this.docType = 'QUOTATION',
+    this.docTitle = 'Quotation',
+    required this.shifting,
+  });
 
   @override
   State<TemplatePreviewScreen> createState() => _TemplatePreviewScreenState();
@@ -40,7 +47,7 @@ class _TemplatePreviewScreenState extends State<TemplatePreviewScreen> {
 
   Future<void> _fetchTemplates() async {
     try {
-      final templates = await _templateService.getTemplatesByType(type: 'QUOTATION');
+      final templates = await _templateService.getTemplatesByType(type: widget.docType);
       // Sort to bring favorite/default first
       templates.sort((a, b) {
         if (a.isFavoriteTemplate && !b.isFavoriteTemplate) return -1;
@@ -51,15 +58,42 @@ class _TemplatePreviewScreenState extends State<TemplatePreviewScreen> {
       if (mounted) {
         setState(() {
           _templates = templates;
+          if (_templates.isEmpty) {
+            _templates = [
+              TemplateModel(
+                id: 0,
+                name: 'Standard ${widget.docTitle} Template',
+                type: widget.docType,
+                htmlContent: '',
+                isActive: true,
+                isFavoriteTemplate: true,
+              )
+            ];
+          }
         });
       }
 
       // Fetch HTML for all templates
-      for (var t in templates) {
-        _fetchHtmlContent(t.id);
+      for (var t in _templates) {
+        if (t.id != 0) {
+          _fetchHtmlContent(t.id);
+        }
       }
     } catch (e) {
-      Get.snackbar('Error', 'Failed to load quotation templates');
+      if (mounted) {
+        setState(() {
+          _templates = [
+            TemplateModel(
+              id: 0,
+              name: 'Standard ${widget.docTitle} Template',
+              type: widget.docType,
+              htmlContent: '',
+              isActive: true,
+              isFavoriteTemplate: true,
+            )
+          ];
+        });
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -447,8 +481,10 @@ class _TemplatePreviewScreenState extends State<TemplatePreviewScreen> {
     if (_templates.isEmpty) return;
     final template = _templates[_currentPage];
 
-    QuotationActionSheet.show(
+    DocumentActionSheet.show(
       context: context,
+      docType: widget.docType,
+      docTitle: widget.docTitle,
       actionType: actionType,
       shiftingId: widget.shifting.shiftingId,
       templateId: template.id,

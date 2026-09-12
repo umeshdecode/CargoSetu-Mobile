@@ -11,4 +11,6 @@ class AppRoutes {
   static const createCustomer = '/create-customer';
   static const customerManagement = '/customer-management';
   static const quotations = '/quotations';
+  static const packingList = '/packing-list';
+  static const createPackingList = '/create-packing-list';
 }
