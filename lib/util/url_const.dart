@@ -43,8 +43,26 @@ class Urls {
       "$templates/quotation/$shiftingId/pdf${templateId != null ? '?templateId=$templateId' : ''}";
   static String sendQuotation(int shiftingId, {int? templateId}) =>
       "$templates/quotation/$shiftingId/send${templateId != null ? '?templateId=$templateId' : ''}";
+  static String packingListPdf(int shiftingId, {int? templateId}) =>
+      "$templates/packing-list/$shiftingId/pdf${templateId != null ? '?templateId=$templateId' : ''}";
+  static String sendPackingList(int shiftingId, {int? templateId}) =>
+      "$templates/packing-list/$shiftingId/send${templateId != null ? '?templateId=$templateId' : ''}";
+  static String documentPdf(String docType, int shiftingId, {int? templateId}) {
+    final typePath = docType.toLowerCase().replaceAll('_', '-');
+    return "$templates/$typePath/$shiftingId/pdf${templateId != null ? '?templateId=$templateId' : ''}";
+  }
+  static String sendDocument(String docType, int shiftingId, {int? templateId}) {
+    final typePath = docType.toLowerCase().replaceAll('_', '-');
+    return "$templates/$typePath/$shiftingId/send${templateId != null ? '?templateId=$templateId' : ''}";
+  }
 
   // ─── SHIFTINGS ──────────────────────────────────────────
   static const String shifts = "$baseUrl/api/v2/cargosetu/shifts";
   static const String shiftsSearch = "$shifts/search";
+
+  // ─── SHIFT INVENTORY / PACKING LIST ─────────────────────
+  static const String shiftInventory = "$baseUrl/api/v2/cargosetu/shift-inventory";
+  static String shiftInventoryByShiftId(int shiftId) => "$shiftInventory/shift/$shiftId";
+  static String shiftInventoryBulk(int shiftId) => "$shiftInventory/bulk/$shiftId";
+  static String shiftInventoryItem(int itemId) => "$shiftInventory/$itemId";
 }

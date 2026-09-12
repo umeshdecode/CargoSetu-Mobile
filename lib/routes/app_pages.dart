@@ -11,6 +11,9 @@ import 'package:get/get.dart';
 import '../auth/login_screen.dart';
 import '../dashboard/main_dashboard_screen.dart';
 
+import 'package:cargo_setu/packing_list/screens/create_packing_list_screen.dart';
+import 'package:cargo_setu/packing_list/screens/packing_list_shift_selection_screen.dart';
+
 class AppPages {
   static final pages = [
     GetPage(
@@ -56,6 +59,14 @@ class AppPages {
     GetPage(
       name: '/quotations',
       page: () => const QuotationScreen(),
+    ),
+    GetPage(
+      name: '/packing-list',
+      page: () => const PackingListShiftSelectionScreen(),
+    ),
+    GetPage(
+      name: '/create-packing-list',
+      page: () => const CreatePackingListScreen(),
     ),
   ];
 }
