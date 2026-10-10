@@ -2,6 +2,7 @@ import 'package:cargo_setu/packing_list/controllers/packing_list_controller.dart
 import 'package:cargo_setu/packing_list/models/packing_item_model.dart';
 import 'package:cargo_setu/quotation/screens/template_preview_screen.dart';
 import 'package:cargo_setu/theme/app_colors.dart';
+import 'package:cargo_setu/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -454,13 +455,7 @@ class _AddEditPackingItemSheetState extends State<_AddEditPackingItemSheet> {
   Future<void> _handleSave({required bool keepOpen}) async {
     final name = itemNameCtrl.text.trim();
     if (name.isEmpty) {
-      Get.snackbar(
-        'Item Name Required',
-        'Please enter the item name.',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: const Color(0xFFEF4444),
-        colorText: Colors.white,
-      );
+      AppSnackbar.warning('Please enter the item name.');
       return;
     }
 

@@ -1,7 +1,7 @@
 /// All API endpoint URLs for the CargoSetu backend.
 class Urls {
-  // static const String baseUrl = "http://192.168.1.6:31201";
-  static const String baseUrl = "https://code-setu-app.onrender.com";
+  static const String baseUrl = "http://192.168.1.6:31201";
+  // static const String baseUrl = "https://code-setu-app.onrender.com";
   // static const String baseUrl = "https://gameless-vacillating-stevie.ngrok-free.dev";
 
   // ─── AUTH ───────────────────────────────────────────────
@@ -65,4 +65,72 @@ class Urls {
   static String shiftInventoryByShiftId(int shiftId) => "$shiftInventory/shift/$shiftId";
   static String shiftInventoryBulk(int shiftId) => "$shiftInventory/bulk/$shiftId";
   static String shiftInventoryItem(int itemId) => "$shiftInventory/$itemId";
+
+  // ─── VEHICLE & FLEET MANAGEMENT ─────────────────────────
+  static const String vehicle = "$baseUrl/vehicle";
+  static String vehicleById(int id) => "$vehicle/$id";
+  static const String drivers = "$baseUrl/api/v2/cargosetu/drivers";
+  static String driverById(int id) => "$drivers/$id";
+  static const String assignments = "$baseUrl/api/v2/cargosetu/assignments";
+  static String unassignDriver(int id) => "$assignments/unassign/$id";
+
+  // ─── VEHICLE CATALOGUE ───────────────────────────────────
+  static const String catalogueBrands = "$baseUrl/api/v2/cargosetu/vehicles/brands";
+  static const String catalogueModels = "$baseUrl/api/v2/cargosetu/vehicles/models";
+  static String catalogueModelById(int id) => "$catalogueModels/$id";
+  static const String catalogueSearch = "$catalogueModels/search";
+
+  // ─── MARKETPLACE ─────────────────────────────────────────
+  static const String marketplace = "$baseUrl/api/v2/cargosetu/marketplace";
+  static const String marketplaceLoads = "$marketplace/loads";
+  static String marketplaceLoadById(int id) => "$marketplaceLoads/$id";
+  static String marketplaceLoadPublish(int id) => "$marketplaceLoads/$id/publish";
+  static String marketplaceLoadClose(int id) => "$marketplaceLoads/$id/close";
+
+  static const String marketplaceTrucks = "$marketplace/trucks";
+  static String marketplaceTruckById(int id) => "$marketplaceTrucks/$id";
+  static String marketplaceTruckPublish(int id) => "$marketplaceTrucks/$id/publish";
+  static String marketplaceTruckClose(int id) => "$marketplaceTrucks/$id/close";
+
+  static const String marketplaceOffers = "$marketplace/offers";
+  static String marketplaceOffersForListing(int listingId) => "$marketplaceOffers/listing/$listingId";
+  static String marketplaceOfferAccept(int id) => "$marketplaceOffers/$id/accept";
+  static String marketplaceOfferReject(int id) => "$marketplaceOffers/$id/reject";
+  static String marketplaceOfferCounter(int id) => "$marketplaceOffers/$id/counter";
+
+  static const String marketplaceBookings = "$marketplace/bookings";
+  static String marketplaceBookingById(int id) => "$marketplaceBookings/$id";
+  static String marketplaceBookingCancel(int id) => "$marketplaceBookings/$id/cancel";
+  static String marketplaceBookingAssign(int id) => "$marketplaceBookings/$id/assign";
+
+  static const String marketplaceTrips = "$marketplace/trips";
+  static String marketplaceTripById(int id) => "$marketplaceTrips/$id";
+  static String marketplaceTripTimeline(int id) => "$marketplaceTrips/$id/timeline";
+  static String marketplaceTripEvents(int id) => "$marketplaceTrips/$id/events";
+  static String marketplaceTripLocation(int id) => "$marketplaceTrips/$id/location";
+  static const String marketplaceActiveTrips = "$marketplaceTrips/active";
+
+  static const String marketplacePayments = "$marketplace/payments";
+  static String marketplacePaymentHistory(int bookingId) => "$marketplacePayments/history/$bookingId";
+  static const String marketplacePaymentOrders = "$marketplacePayments/orders";
+  static const String marketplaceWalletStatement = "$marketplacePayments/wallet/statement";
+
+  static const String marketplaceConversations = "$marketplace/conversations";
+  static String marketplaceMessages(int conversationId) => "$marketplaceConversations/$conversationId/messages";
+  static String marketplaceConversationRead(int conversationId) => "$marketplaceConversations/$conversationId/read";
+
+  static const String marketplaceDisputes = "$marketplace/disputes";
+  static String marketplaceDisputeByBooking(int bookingId) => "$marketplaceDisputes/booking/$bookingId";
+  static String marketplaceDisputeById(int id) => "$marketplaceDisputes/$id";
+  static String marketplaceDisputeEvidence(int id) => "$marketplaceDisputes/$id/evidence";
+
+  static const String marketplaceMatches = "$marketplace/matches";
+  static String marketplaceMatchesForLoad(int loadId) => "$marketplaceMatches/load/$loadId";
+  static String marketplaceMatchesForTruck(int truckId) => "$marketplaceMatches/truck/$truckId";
+  static const String marketplaceRecommendations = "$marketplaceMatches/recommendations";
+  static const String marketplaceAlerts = "$marketplaceMatches/alerts";
+
+  static const String marketplaceRatings = "$marketplace/ratings";
+  static String marketplaceRatingsForBooking(int bookingId) => "$marketplaceRatings/booking/$bookingId";
+  static String marketplaceRatingsForCompany(int companyId) => "$marketplaceRatings/company/$companyId";
 }

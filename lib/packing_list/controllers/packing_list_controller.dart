@@ -2,6 +2,7 @@ import 'dart:developer';
 import 'package:cargo_setu/network/api_request.dart';
 import 'package:cargo_setu/quotation/models/shifting_list_model.dart';
 import 'package:cargo_setu/quotation/services/shifting_service.dart';
+import 'package:cargo_setu/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../models/packing_item_model.dart';
@@ -260,27 +261,14 @@ class PackingListController extends GetxController {
         packingItems.add(newItem);
       }
 
-      Get.snackbar(
-        'Item Added Successfully!',
+      AppSnackbar.success(
         '${itemName.trim()} (Packaging No: $finalPkgNo) added to list.',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: const Color(0xFF10B981),
-        colorText: Colors.white,
-        icon: const Icon(Icons.check_circle_rounded, color: Colors.white, size: 28),
-        duration: const Duration(seconds: 3),
-        margin: const EdgeInsets.all(12),
-        borderRadius: 12,
+        title: 'Item Added',
       );
       return true;
     } catch (e) {
       log('Error adding packing item: $e');
-      Get.snackbar(
-        'Failed to Add',
-        ApiRequest.formatErrorMessage(e),
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: const Color(0xFFEF4444),
-        colorText: Colors.white,
-      );
+      AppSnackbar.error(ApiRequest.formatErrorMessage(e));
       return false;
     } finally {
       isSavingItem.value = false;
@@ -310,24 +298,11 @@ class PackingListController extends GetxController {
         packingItems[index] = updatedItem;
       }
 
-      Get.snackbar(
-        'Item Updated',
-        'Packaging item updated successfully.',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: const Color(0xFF10B981),
-        colorText: Colors.white,
-        duration: const Duration(seconds: 2),
-      );
+      AppSnackbar.success('Packaging item updated successfully.');
       return true;
     } catch (e) {
       log('Error updating packing item: $e');
-      Get.snackbar(
-        'Failed to Update',
-        ApiRequest.formatErrorMessage(e),
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: const Color(0xFFEF4444),
-        colorText: Colors.white,
-      );
+      AppSnackbar.error(ApiRequest.formatErrorMessage(e));
       return false;
     } finally {
       isSavingItem.value = false;
@@ -340,24 +315,11 @@ class PackingListController extends GetxController {
     if (item.id != null) {
       final success = await _packingListService.deletePackingItem(item.id!);
       if (!success) {
-        Get.snackbar(
-          'Delete Failed',
-          'Could not delete item from server.',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFFEF4444),
-          colorText: Colors.white,
-        );
+        AppSnackbar.error('Could not delete item from server.');
         return;
       }
     }
     packingItems.removeAt(index);
-    Get.snackbar(
-      'Item Removed',
-      'Item removed from packaging list.',
-      snackPosition: SnackPosition.TOP,
-      backgroundColor: const Color(0xFF64748B),
-      colorText: Colors.white,
-      duration: const Duration(seconds: 2),
-    );
+    AppSnackbar.show('Item removed from packaging list.', icon: Icons.delete_outline);
   }
 }

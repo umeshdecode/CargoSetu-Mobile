@@ -1,6 +1,7 @@
 import 'dart:developer';
 import 'package:cargo_setu/customer/models/customer_model.dart';
 import 'package:cargo_setu/customer/services/customer_service.dart';
+import 'package:cargo_setu/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -135,21 +136,12 @@ class CustomerManagementController extends GetxController {
           allCustomers.removeWhere((c) =>
               (c.customerId != null && c.customerId == customer.customerId) ||
               (c.uuid != null && c.uuid == customer.uuid));
-          Get.snackbar(
-            'Deleted',
-            'Customer ${customer.fullName} deleted successfully',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: const Color(0xFF1E293B),
-            colorText: Colors.white,
-            margin: const EdgeInsets.all(16),
-            borderRadius: 12,
-            icon: const Icon(Icons.check_circle_outline, color: Colors.greenAccent),
-          );
+          AppSnackbar.success('Customer ${customer.fullName} deleted successfully');
         } else {
-          Get.snackbar('Error', 'Unable to delete customer');
+          AppSnackbar.error('Unable to delete customer');
         }
       } catch (e) {
-        Get.snackbar('Error', 'Failed to delete customer: $e');
+        AppSnackbar.error('Failed to delete customer: $e');
       } finally {
         isDeleting.value = false;
       }

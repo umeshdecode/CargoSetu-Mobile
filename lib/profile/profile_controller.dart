@@ -6,6 +6,7 @@ import 'package:cargo_setu/profile/model/staff_model.dart';
 import 'package:cargo_setu/profile/profile_service.dart';
 import 'package:cargo_setu/services/session_service.dart';
 import 'package:cargo_setu/util/constant.dart';
+import 'package:cargo_setu/widgets/app_snackbar.dart';
 import 'package:dio/dio.dart';
 import 'package:get/get.dart' hide Response;
 import 'package:get_storage/get_storage.dart';
@@ -295,6 +296,6 @@ class ProfileController extends GetxController {
   void _notifyError(String message) {
     errorMessage.value = message;
     log('❌ Profile: $message');
-    Get.snackbar('Error', message, snackPosition: SnackPosition.TOP);
+    AppSnackbar.error(message);
   }
 }

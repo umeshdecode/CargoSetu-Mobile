@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cargo_setu/customer/models/customer_model.dart';
 import 'package:cargo_setu/customer/services/customer_service.dart';
+import 'package:cargo_setu/widgets/app_snackbar.dart';
 
 class CreateCustomerController extends GetxController {
   final CustomerService _service = CustomerService();
@@ -128,17 +129,7 @@ class CreateCustomerController extends GetxController {
     if (Get.isSnackbarOpen) {
       Get.closeCurrentSnackbar();
     }
-    Get.snackbar(
-      'Validation Required',
-      message,
-      snackPosition: SnackPosition.TOP,
-      duration: const Duration(seconds: 3),
-      animationDuration: const Duration(milliseconds: 150),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      borderRadius: 12,
-      isDismissible: true,
-      forwardAnimationCurve: Curves.fastOutSlowIn,
-    );
+    AppSnackbar.warning(message);
   }
 
   bool validateInputs() {
@@ -229,20 +220,12 @@ class CreateCustomerController extends GetxController {
       bool success = await _service.createCustomer(newCustomer);
       if (success) {
         Get.back(result: true);
-        Get.snackbar(
-          'Success',
-          'Customer created successfully!',
-          snackPosition: SnackPosition.TOP,
-          duration: const Duration(seconds: 2),
-          animationDuration: const Duration(milliseconds: 150),
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          borderRadius: 12,
-        );
+        AppSnackbar.success('Customer created successfully!');
       } else {
         _showFastTopError('Failed to create customer. Please check input values.');
       }
     } catch (e) {
-      _showFastTopError('Error: $e');
+      _showFastTopError(e.toString());
     } finally {
       isLoading.value = false;
     }

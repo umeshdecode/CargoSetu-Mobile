@@ -2,6 +2,7 @@ import 'package:cargo_setu/company/company_controller.dart';
 import 'package:cargo_setu/company/no_company_screen.dart';
 import 'package:cargo_setu/dashboard/dashboard.dart';
 import 'package:cargo_setu/profile/profile_screen.dart';
+import 'package:cargo_setu/marketplace/screens/marketplace_hub_screen.dart';
 import 'package:cargo_setu/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -27,11 +28,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       title: 'Documents',
       subtitle: 'Generate LR copies, invoices,\nquotations and packing lists.',
     ),
-    const _ComingSoonPlaceholder(
-      icon: Icons.local_shipping_outlined,
-      title: 'Loads',
-      subtitle: 'Find and manage freight loads\nnear your location.',
-    ),
+    const MarketplaceHubScreen(),
     const ProfileScreen(),
   ];
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cargo_setu/customer/models/customer_model.dart';
 import 'package:cargo_setu/customer/services/customer_service.dart';
+import 'package:cargo_setu/widgets/app_snackbar.dart';
 
 class EditCustomerController extends GetxController {
   final CustomerService _service = CustomerService();
@@ -167,17 +168,7 @@ class EditCustomerController extends GetxController {
     if (Get.isSnackbarOpen) {
       Get.closeCurrentSnackbar();
     }
-    Get.snackbar(
-      'Validation Required',
-      message,
-      snackPosition: SnackPosition.TOP,
-      duration: const Duration(seconds: 3),
-      animationDuration: const Duration(milliseconds: 150),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      borderRadius: 12,
-      isDismissible: true,
-      forwardAnimationCurve: Curves.fastOutSlowIn,
-    );
+    AppSnackbar.warning(message);
   }
 
   Future<void> updateCustomer() async {
@@ -252,20 +243,12 @@ class EditCustomerController extends GetxController {
       final success = await _service.updateCustomer(updatedCustomer);
       if (success) {
         Get.back(result: true);
-        Get.snackbar(
-          'Success',
-          'Customer updated successfully!',
-          snackPosition: SnackPosition.TOP,
-          duration: const Duration(seconds: 2),
-          animationDuration: const Duration(milliseconds: 150),
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          borderRadius: 12,
-        );
+        AppSnackbar.success('Customer updated successfully!');
       } else {
         _showFastTopError('Failed to update customer');
       }
     } catch (e) {
-      _showFastTopError('Update failed: $e');
+      _showFastTopError(e.toString());
     } finally {
       isSaving.value = false;
     }

@@ -5,6 +5,7 @@ import 'package:cargo_setu/customer/services/template_service.dart';
 import 'package:cargo_setu/network/api_request.dart';
 import 'package:cargo_setu/theme/app_colors.dart';
 import 'package:cargo_setu/widgets/app_dialog.dart';
+import 'package:cargo_setu/widgets/app_snackbar.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -111,7 +112,7 @@ class _QuotationGenerationDialogState extends State<QuotationGenerationDialog> {
       setState(() {
         template.isFavoriteTemplate = oldState;
       });
-      Get.snackbar('Error', 'Failed to update default template');
+      AppSnackbar.error('Failed to update default template');
     }
   }
 
@@ -158,7 +159,7 @@ class _QuotationGenerationDialogState extends State<QuotationGenerationDialog> {
 
   Future<void> _handleDownloadPdf() async {
     if (_selectedShifting == null || _selectedShifting!.shiftingId == null) {
-      Get.snackbar('Error', 'Please select a valid shifting first');
+      AppSnackbar.error('Please select a valid shifting first');
       return;
     }
 
@@ -168,7 +169,7 @@ class _QuotationGenerationDialogState extends State<QuotationGenerationDialog> {
       final shiftingId = _selectedShifting!.shiftingId!;
       final templateId = _selectedTemplate?.id;
 
-      // 1. Download PDF bytes from server (60s timeout configured)
+      // 1. Download PDF bytes from server (3-minute timeout configured)
       final pdfBytes = await _templateService.downloadQuotationPdf(
         shiftingId,
         templateId: templateId,
@@ -176,13 +177,7 @@ class _QuotationGenerationDialogState extends State<QuotationGenerationDialog> {
 
       if (pdfBytes == null || pdfBytes.isEmpty) {
         setState(() => _isDownloadingPdf = false);
-        Get.snackbar(
-          'Error',
-          'Failed to retrieve quotation PDF content from server',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFFEF4444),
-          colorText: Colors.white,
-        );
+        AppSnackbar.error('Quotation not generated yet. Please try again after some time.');
         return;
       }
 
@@ -273,7 +268,7 @@ class _QuotationGenerationDialogState extends State<QuotationGenerationDialog> {
       }
     } catch (e) {
       setState(() => _isDownloadingPdf = false);
-      final errorMsg = ApiRequest.formatErrorMessage(e, defaultMessage: 'Failed to download quotation PDF');
+      final errorMsg = ApiRequest.formatDocumentErrorMessage(e, docTitle: 'Quotation');
       Get.snackbar(
         'Download Failed',
         errorMsg,
@@ -287,17 +282,13 @@ class _QuotationGenerationDialogState extends State<QuotationGenerationDialog> {
 
   Future<void> _handleSendQuotation() async {
     if (_selectedShifting == null || _selectedShifting!.shiftingId == null) {
-      Get.snackbar('Error', 'Please select a valid shifting first');
+      AppSnackbar.error('Please select a valid shifting first');
       return;
     }
 
     if (widget.customer.email.isEmpty) {
-      Get.snackbar(
-        'Email Missing',
+      AppSnackbar.warning(
         'This customer has no email address configured. Please add an email in Edit Customer.',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: const Color(0xFFEF4444),
-        colorText: Colors.white,
       );
       return;
     }
@@ -326,17 +317,18 @@ class _QuotationGenerationDialogState extends State<QuotationGenerationDialog> {
           );
         }
       } else {
-        Get.snackbar('Failed', result['message'] ?? 'Failed to send quotation');
+        AppSnackbar.error(result['message'] ?? 'Quotation could not be generated or sent. Please try again after some time.');
       }
     } catch (e) {
       setState(() => _isSendingEmail = false);
-      final errorMsg = ApiRequest.formatErrorMessage(e, defaultMessage: 'Failed to send quotation');
+      final errorMsg = ApiRequest.formatDocumentErrorMessage(e, docTitle: 'Quotation');
       Get.snackbar(
-        'Error',
+        'Sending Failed',
         errorMsg,
         snackPosition: SnackPosition.TOP,
         backgroundColor: const Color(0xFFEF4444),
         colorText: Colors.white,
+        duration: const Duration(seconds: 4),
       );
     }
   }
@@ -556,7 +548,7 @@ class _QuotationGenerationDialogState extends State<QuotationGenerationDialog> {
         padding: EdgeInsets.symmetric(vertical: 30),
         child: Center(
           child: Text(
-            'No quotation templates found.\nPlease configure templates in settings.',
+            'No quotation templates found',
             textAlign: TextAlign.center,
             style: TextStyle(color: AppColors.textSecondary),
           ),

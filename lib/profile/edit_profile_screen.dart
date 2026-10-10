@@ -6,6 +6,7 @@ import 'package:cargo_setu/profile/profile_controller.dart';
 import 'package:cargo_setu/services/location_service.dart';
 import 'package:cargo_setu/theme/app_colors.dart';
 import 'package:cargo_setu/widgets/app_dialog.dart';
+import 'package:cargo_setu/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -417,15 +418,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       // Upload immediately
       final success = await _ctrl.uploadProfileImage(file);
       if (success && mounted) {
-        Get.snackbar('Success', 'Profile photo updated',
-            snackPosition: SnackPosition.TOP,
-            backgroundColor: const Color(0xFF28A745),
-            colorText: Colors.white,
-            margin: const EdgeInsets.all(12));
+        AppSnackbar.success('Profile photo updated');
       }
     } catch (e) {
-      Get.snackbar('Error', 'Could not pick image',
-          snackPosition: SnackPosition.TOP);
+      AppSnackbar.error('Could not pick image');
     }
   }
 
@@ -433,11 +429,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final success = await _ctrl.removeProfileImage();
     if (success && mounted) {
       setState(() => _selectedImageFile = null);
-      Get.snackbar('Success', 'Profile photo removed',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF28A745),
-          colorText: Colors.white,
-          margin: const EdgeInsets.all(12));
+      AppSnackbar.success('Profile photo removed');
     }
   }
 

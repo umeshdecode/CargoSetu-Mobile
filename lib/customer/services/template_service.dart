@@ -76,6 +76,7 @@ class TemplateService {
         headers: {
           'Accept': 'text/html, */*',
         },
+        receiveTimeout: const Duration(minutes: 2),
       );
 
       if (response.statusCode == 200 && response.data != null) {
@@ -97,6 +98,7 @@ class TemplateService {
         headers: {
           'Accept': 'application/pdf, */*',
         },
+        receiveTimeout: const Duration(minutes: 3),
       );
 
       if (response.statusCode == 200 && response.data != null) {
@@ -170,6 +172,7 @@ class TemplateService {
         headers: {
           'Accept': 'application/pdf, */*',
         },
+        receiveTimeout: const Duration(minutes: 3),
       );
 
       if (response.statusCode == 200 && response.data != null) {
@@ -177,7 +180,7 @@ class TemplateService {
       }
       return null;
     } catch (e) {
-      log('❌ Download $docType PDF error: $e');
+      log('Download $docType PDF error: $e');
       rethrow;
     }
   }
@@ -191,6 +194,7 @@ class TemplateService {
     try {
       final response = await _api.post(
         url: Urls.sendDocument(docType, shiftingId, templateId: templateId),
+        receiveTimeout: const Duration(minutes: 3),
       );
 
       if (response.statusCode == 200) {
@@ -208,9 +212,13 @@ class TemplateService {
       return {'success': false, 'message': 'Failed to send document'};
     } catch (e) {
       log('❌ Send $docType error: $e');
-      String msg = 'Failed to send document';
-      if (e is DioException && e.response?.data is Map) {
-        msg = e.response?.data['responseMessege'] ?? e.response?.data['message'] ?? msg;
+      String msg = '$docType could not be sent. Please try again after some time.';
+      if (e is DioException) {
+        if (e.type == DioExceptionType.receiveTimeout || e.type == DioExceptionType.sendTimeout) {
+          msg = '$docType generation is taking longer than usual. Document not generated yet, please try again after some time.';
+        } else if (e.response?.data is Map) {
+          msg = e.response?.data['responseMessege'] ?? e.response?.data['message'] ?? msg;
+        }
       }
       return {'success': false, 'message': msg};
     }

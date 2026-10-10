@@ -4,6 +4,7 @@ import 'package:cargo_setu/customer/screens/create_customer_screen.dart';
 import 'package:cargo_setu/customer/screens/edit_customer_screen.dart';
 import 'package:cargo_setu/customer/widgets/quotation_generation_dialog.dart';
 import 'package:cargo_setu/theme/app_colors.dart';
+import 'package:cargo_setu/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -666,10 +667,9 @@ class CustomerManagementScreen extends StatelessWidget {
                       tooltip: 'Copy Phone',
                       onPressed: () {
                         Clipboard.setData(ClipboardData(text: customer.mobileNo));
-                        Get.snackbar(
-                          'Copied',
+                        AppSnackbar.show(
                           'Phone number ${customer.mobileNo} copied to clipboard',
-                          snackPosition: SnackPosition.BOTTOM,
+                          icon: Icons.copy,
                           duration: const Duration(seconds: 2),
                         );
                       },
@@ -685,7 +685,7 @@ class CustomerManagementScreen extends StatelessWidget {
                       } else if (action == 'quotation') {
                         QuotationGenerationDialog.show(context, customer: customer);
                       } else if (action == 'invoice') {
-                        Get.snackbar('Invoice', 'Generating invoice for ${customer.fullName}...');
+                        AppSnackbar.info('Generating invoice for ${customer.fullName}...', title: 'Invoice');
                       }
                     },
                     itemBuilder: (ctx) => [

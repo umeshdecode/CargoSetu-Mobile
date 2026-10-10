@@ -5,6 +5,7 @@ import 'package:cargo_setu/company/company_controller.dart';
 import 'package:cargo_setu/routes/app_routes.dart';
 import 'package:cargo_setu/services/session_service.dart';
 import 'package:cargo_setu/util/constant.dart';
+import 'package:cargo_setu/widgets/app_snackbar.dart';
 import 'package:country_picker/country_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -82,7 +83,7 @@ class LoginController extends GetxController {
   ////////////////////////
   Future<void> login() async {
     if (userNameController.text.isEmpty || passwordController.text.isEmpty) {
-      Get.snackbar("Error", "Username & Password required");
+      AppSnackbar.warning("Username & Password required");
       return;
     }
 
@@ -103,9 +104,9 @@ class LoginController extends GetxController {
       await _saveSessionAndCheckCompany(loginRes);
     } on DioException catch (e) {
       final msg = ApiRequest.formatErrorMessage(e, defaultMessage: "Login Failed, Try after Some time");
-      Get.snackbar("Login Failed", msg);
+      AppSnackbar.error(msg);
     } catch (e) {
-      Get.snackbar("Login Failed", e.toString());
+      AppSnackbar.error(e.toString());
     } finally {
       isLoading.value = false;
     }
@@ -116,7 +117,7 @@ class LoginController extends GetxController {
   ////////////////////////
   Future<void> sendOtp() async {
     if (mobileNumberController.text.isEmpty) {
-      Get.snackbar("Error", "Mobile number required");
+      AppSnackbar.warning("Mobile number required");
       return;
     }
 
@@ -128,16 +129,16 @@ class LoginController extends GetxController {
         // The backend might return mockOtp in response for testing
         final mockOtp = response.data['mockOtp'];
         if (mockOtp != null) {
-          Get.snackbar("OTP Sent", "Your mock OTP is: $mockOtp");
+          AppSnackbar.info("Your mock OTP is: $mockOtp", title: "OTP Sent");
         } else {
-          Get.snackbar("Success", "OTP sent successfully");
+          AppSnackbar.success("OTP sent successfully");
         }
       }
     } on DioException catch (e) {
       final msg = ApiRequest.formatErrorMessage(e, defaultMessage: "Failed to send OTP");
-      Get.snackbar("Error", msg);
+      AppSnackbar.error(msg);
     } catch (e) {
-      Get.snackbar("Error", e.toString());
+      AppSnackbar.error(e.toString());
     } finally {
       isLoading.value = false;
     }
@@ -145,7 +146,7 @@ class LoginController extends GetxController {
 
   Future<void> verifyOtp() async {
     if (otpController.text.isEmpty || otpController.text.length != 6) {
-      Get.snackbar("Error", "Invalid OTP");
+      AppSnackbar.warning("Please enter a valid 6-digit OTP");
       return;
     }
 
@@ -161,9 +162,9 @@ class LoginController extends GetxController {
       await _saveSessionAndCheckCompany(loginRes);
     } on DioException catch (e) {
       final msg = ApiRequest.formatErrorMessage(e, defaultMessage: "Invalid or expired OTP");
-      Get.snackbar("Error", msg);
+      AppSnackbar.error(msg);
     } catch (e) {
-      Get.snackbar("Error", e.toString());
+      AppSnackbar.error(e.toString());
     } finally {
       isLoading.value = false;
     }

@@ -1,5 +1,6 @@
 import 'package:cargo_setu/packing_list/widgets/document_action_sheet.dart';
 import 'package:cargo_setu/theme/app_colors.dart';
+import 'package:cargo_setu/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -314,19 +315,13 @@ class _TemplatePreviewScreenState extends State<TemplatePreviewScreen> {
                     try {
                       final success = await _templateService.setDefaultTemplate(template.id);
                       if (success) {
-                        Get.snackbar(
-                          'Success',
+                        AppSnackbar.success(
                           'Set "${template.name}" as default quotation template',
-                          snackPosition: SnackPosition.BOTTOM,
                         );
                         _fetchTemplates();
                       }
                     } catch (e) {
-                      Get.snackbar(
-                        'Error',
-                        'Failed to set default template',
-                        snackPosition: SnackPosition.BOTTOM,
-                      );
+                      AppSnackbar.error('Failed to set default template');
                     }
                   },
                 )

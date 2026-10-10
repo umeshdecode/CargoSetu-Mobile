@@ -3,8 +3,8 @@ import 'package:cargo_setu/customer/services/template_service.dart';
 import 'package:cargo_setu/packing_list/widgets/document_action_sheet.dart';
 import 'package:cargo_setu/quotation/models/shifting_list_model.dart';
 import 'package:cargo_setu/theme/app_colors.dart';
+import 'package:cargo_setu/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 
 class DocumentTemplateDialog extends StatefulWidget {
   final String docType;
@@ -84,15 +84,11 @@ class _DocumentTemplateDialogState extends State<DocumentTemplateDialog> {
     try {
       final success = await _templateService.setDefaultTemplate(template.id);
       if (success) {
-        Get.snackbar(
-          'Default Template',
-          '"${template.name}" set as default for ${widget.docTitle}',
-          snackPosition: SnackPosition.BOTTOM,
-        );
+        AppSnackbar.success('"${template.name}" set as default for ${widget.docTitle}');
         _fetchTemplates();
       }
     } catch (e) {
-      Get.snackbar('Error', 'Failed to set default template');
+      AppSnackbar.error('Failed to set default template');
     }
   }
 

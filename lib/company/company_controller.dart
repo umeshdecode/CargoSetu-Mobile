@@ -7,6 +7,7 @@ import 'package:cargo_setu/company/model/company_model.dart';
 import 'package:cargo_setu/network/api_request.dart';
 import 'package:cargo_setu/services/session_service.dart';
 import 'package:cargo_setu/util/constant.dart';
+import 'package:cargo_setu/widgets/app_snackbar.dart';
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -168,13 +169,12 @@ class CompanyController extends GetxController {
           return true;
         } else {
           final msg = data['responseMessege'] ?? 'Failed to create company';
-          Get.snackbar('Error', msg, snackPosition: SnackPosition.TOP);
+          AppSnackbar.error(msg);
           return false;
         }
       }
 
-      Get.snackbar('Error', 'Failed to create company',
-          snackPosition: SnackPosition.TOP);
+      AppSnackbar.error('Failed to create company');
       return false;
     } on DioException catch (e) {
       log('❌ Create company error: ${e.response?.statusCode} ${e.response?.data}');
@@ -186,11 +186,11 @@ class CompanyController extends GetxController {
           msg = 'A company with this email already exists';
         }
       }
-      Get.snackbar('Error', msg, snackPosition: SnackPosition.TOP);
+      AppSnackbar.error(msg);
       return false;
     } catch (e) {
       log('❌ Create company unknown error: $e');
-      Get.snackbar('Error', e.toString(), snackPosition: SnackPosition.TOP);
+      AppSnackbar.error(e.toString());
       return false;
     } finally {
       isSubmitting.value = false;
@@ -239,7 +239,7 @@ class CompanyController extends GetxController {
       }
 
       final msg = data?['responseMessege'] ?? 'Failed to update company';
-      Get.snackbar('Error', msg, snackPosition: SnackPosition.TOP);
+      AppSnackbar.error(msg);
       return false;
     } on DioException catch (e) {
       log('❌ Update company error: ${e.response?.data}');
@@ -247,11 +247,11 @@ class CompanyController extends GetxController {
       final msg = (data is Map)
           ? (data['responseMessege'] ?? data['message'] ?? 'Failed to update')
           : 'Failed to update company';
-      Get.snackbar('Error', msg, snackPosition: SnackPosition.TOP);
+      AppSnackbar.error(msg);
       return false;
     } catch (e) {
       log('❌ Update company unknown error: $e');
-      Get.snackbar('Error', e.toString(), snackPosition: SnackPosition.TOP);
+      AppSnackbar.error(e.toString());
       return false;
     } finally {
       isSubmitting.value = false;
@@ -290,8 +290,7 @@ class CompanyController extends GetxController {
       return false;
     } on DioException catch (e) {
       log('❌ Delete company error: ${e.response?.data}');
-      Get.snackbar('Error', 'Failed to delete company',
-          snackPosition: SnackPosition.TOP);
+      AppSnackbar.error('Failed to delete company');
       return false;
     } finally {
       isSubmitting.value = false;

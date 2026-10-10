@@ -80,7 +80,9 @@ class DashboardScreen extends StatelessWidget {
             _buildFleetCard(
               icon: Icons.local_shipping_outlined,
               label: 'Vehicles',
-              onTap: () {},
+              onTap: () {
+                Get.toNamed(AppRoutes.vehicleManagement);
+              },
             ),
             const SizedBox(height: 10),
             _buildFleetCard(
@@ -92,7 +94,9 @@ class DashboardScreen extends StatelessWidget {
             _buildFleetCard(
               icon: Icons.badge_outlined,
               label: 'Driver Mgmt',
-              onTap: () {},
+              onTap: () {
+                Get.toNamed(AppRoutes.drivers);
+              },
             ),
             const SizedBox(height: 22),
 
@@ -700,7 +704,9 @@ class _FindLoadsCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () {},
+        onTap: () {
+          Get.toNamed(AppRoutes.marketplace);
+        },
         borderRadius: BorderRadius.circular(16),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),

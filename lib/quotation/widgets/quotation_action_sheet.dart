@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'package:cargo_setu/network/api_request.dart';
 import 'package:cargo_setu/theme/app_colors.dart';
+import 'package:cargo_setu/widgets/app_snackbar.dart';
 import 'package:cargo_setu/customer/services/template_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -75,7 +77,7 @@ class _QuotationActionSheetState extends State<QuotationActionSheet> {
   Future<void> _handleWhatsApp() async {
     final phone = _phoneController.text.trim();
     if (phone.isEmpty) {
-      Get.snackbar('Validation', 'Please enter a valid mobile number');
+      AppSnackbar.warning('Please enter a valid mobile number');
       return;
     }
 
@@ -99,32 +101,20 @@ class _QuotationActionSheetState extends State<QuotationActionSheet> {
           await launchUrl(url, mode: LaunchMode.externalApplication);
           if (mounted) {
             Get.back();
-            Get.snackbar(
-              'WhatsApp Opened',
+            AppSnackbar.info(
               'Quotation generated with template "${widget.templateName}". Share on WhatsApp.',
-              snackPosition: SnackPosition.BOTTOM,
+              title: 'WhatsApp Opened',
             );
           }
         } else {
-          Get.snackbar(
-            'Error',
-            'Could not launch WhatsApp app',
-            snackPosition: SnackPosition.BOTTOM,
-          );
+          AppSnackbar.error('Could not launch WhatsApp app');
         }
       } else {
-        Get.snackbar(
-          'Error',
-          'Failed to generate quotation PDF',
-          snackPosition: SnackPosition.BOTTOM,
-        );
+        AppSnackbar.error('Quotation not generated. Please try again after some time.');
       }
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to process WhatsApp request: $e',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      final errorMsg = ApiRequest.formatDocumentErrorMessage(e, docTitle: 'Quotation');
+      AppSnackbar.error(errorMsg);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -141,26 +131,19 @@ class _QuotationActionSheetState extends State<QuotationActionSheet> {
       if (mounted) {
         Get.back();
         if (res['success'] == true) {
-          Get.snackbar(
-            'Success',
+          AppSnackbar.success(
             res['message'] ?? 'Quotation emailed to customer successfully',
-            snackPosition: SnackPosition.BOTTOM,
           );
         } else {
-          Get.snackbar(
-            'Error',
-            res['message'] ?? 'Failed to send email quotation',
-            snackPosition: SnackPosition.BOTTOM,
+          AppSnackbar.error(
+            res['message'] ?? 'Quotation could not be generated or sent. Please try again after some time.',
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        Get.snackbar(
-          'Error',
-          'Failed to send email quotation',
-          snackPosition: SnackPosition.BOTTOM,
-        );
+        final errorMsg = ApiRequest.formatDocumentErrorMessage(e, docTitle: 'Quotation');
+        AppSnackbar.error(errorMsg);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -189,26 +172,17 @@ class _QuotationActionSheetState extends State<QuotationActionSheet> {
 
         if (savedPath != null && mounted) {
           Get.back();
-          Get.snackbar(
-            'Downloaded',
+          AppSnackbar.success(
             'Saved to: $savedPath',
-            duration: const Duration(seconds: 4),
-            snackPosition: SnackPosition.BOTTOM,
+            title: 'Downloaded',
           );
         }
       } else {
-        Get.snackbar(
-          'Error',
-          'Failed to download quotation PDF',
-          snackPosition: SnackPosition.BOTTOM,
-        );
+        AppSnackbar.error('Quotation not generated. Please try again after some time.');
       }
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to download quotation PDF: $e',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      final errorMsg = ApiRequest.formatDocumentErrorMessage(e, docTitle: 'Quotation');
+      AppSnackbar.error(errorMsg);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -234,21 +208,18 @@ class _QuotationActionSheetState extends State<QuotationActionSheet> {
           if (await canLaunchUrl(fileUri)) {
             await launchUrl(fileUri, mode: LaunchMode.externalApplication);
           } else {
-            Get.snackbar(
-              'Saved to device',
+            AppSnackbar.info(
               'Quotation saved to: $savedPath',
-              snackPosition: SnackPosition.BOTTOM,
-              duration: const Duration(seconds: 4),
+              title: 'Saved to device',
             );
           }
         }
+      } else {
+        AppSnackbar.error('Quotation not generated. Please try again after some time.');
       }
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to open document: $e',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      final errorMsg = ApiRequest.formatDocumentErrorMessage(e, docTitle: 'Quotation');
+      AppSnackbar.error(errorMsg);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

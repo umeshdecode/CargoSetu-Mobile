@@ -13,4 +13,14 @@ class AppRoutes {
   static const quotations = '/quotations';
   static const packingList = '/packing-list';
   static const createPackingList = '/create-packing-list';
+  static const vehicleManagement = '/vehicle-management';
+  static const vehicles = '/vehicle-management/vehicles';
+  static const drivers = '/vehicle-management/drivers';
+  static const assignments = '/vehicle-management/assignments';
+  static const marketplace = '/marketplace';
+  static const createLoadPost = '/marketplace/create-load';
+  static const createTruckPost = '/marketplace/create-truck';
+  static const myBookings = '/marketplace/my-bookings';
+  static const marketplaceWallet = '/marketplace/wallet';
+  static const marketplaceChat = '/marketplace/chat';
 }

@@ -24,8 +24,40 @@ class ApiRequest {
   final GetStorage _storage = GetStorage();
   bool _isRefreshing = false;
 
+  /// User-friendly error message formatter specifically for document and PDF generation/download operations.
+  /// Prevents any internal technical details or stacktraces from being shown to users.
+  static String formatDocumentErrorMessage(dynamic error, {String docTitle = 'Document'}) {
+    if (error is DioException) {
+      switch (error.type) {
+        case DioExceptionType.receiveTimeout:
+        case DioExceptionType.sendTimeout:
+          return '$docTitle is taking longer than usual to generate. Document not generated yet, please try again after some time.';
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.connectionError:
+          return 'Unable to reach server. Please check your internet connection and try again.';
+        case DioExceptionType.badResponse:
+          final data = error.response?.data;
+          if (data is Map) {
+            final msg = data['responseMessege'] ?? data['message'] ?? data['error'];
+            if (msg != null && msg.toString().trim().isNotEmpty) {
+              return msg.toString();
+            }
+          }
+          final status = error.response?.statusCode;
+          return status != null
+              ? '$docTitle could not be generated. Please try again after some time.'
+              : '$docTitle could not be generated. Please try again after some time.';
+        case DioExceptionType.cancel:
+          return '$docTitle request was cancelled.';
+        default:
+          return '$docTitle could not be generated. Please try again after some time.';
+      }
+    }
+    return '$docTitle not generated. Please try again after some time.';
+  }
+
   /// User-friendly error message formatter that prevents raw stacktraces from being shown to users.
-  static String formatErrorMessage(dynamic error, {String defaultMessage = 'Something went wrong,Try Later'}) {
+  static String formatErrorMessage(dynamic error, {String defaultMessage = 'Something went wrong, please try again later.'}) {
     if (error is DioException) {
       switch (error.type) {
         case DioExceptionType.connectionTimeout:
@@ -33,7 +65,7 @@ class ApiRequest {
         case DioExceptionType.sendTimeout:
           return 'Request timed out while sending data. Please try again.';
         case DioExceptionType.receiveTimeout:
-          return 'The server took longer than expected to generate the document (timed out). Please try again.';
+          return 'Server took longer than expected to respond. Please try again after some time.';
         case DioExceptionType.badResponse:
           final data = error.response?.data;
           if (data is Map) {
@@ -49,19 +81,29 @@ class ApiRequest {
         case DioExceptionType.cancel:
           return 'Request was cancelled.';
         default:
-          return error.message != null && error.message!.isNotEmpty
-              ? error.message!
-              : defaultMessage;
+          final msg = error.message;
+          if (msg != null &&
+              msg.isNotEmpty &&
+              !msg.contains('DioException') &&
+              !msg.contains('RequestOptions') &&
+              !msg.contains('Exception') &&
+              !msg.contains('timed out')) {
+            return msg;
+          }
+          return defaultMessage;
       }
     }
-    return error?.toString() ?? defaultMessage;
+    if (error is String && error.isNotEmpty && !error.contains('Exception')) {
+      return error;
+    }
+    return defaultMessage;
   }
 
   ApiRequest._internal() {
     _dio = Dio(
       BaseOptions(
         connectTimeout: const Duration(seconds: 60),
-        receiveTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 90),
         headers: {
           "Content-Type": "application/json",
           "Accept": "application/json",
@@ -267,12 +309,19 @@ class ApiRequest {
     Map<String, dynamic>? queryParams,
     Map<String, dynamic>? headers,
     String? token,
+    Duration? receiveTimeout,
+    Duration? sendTimeout,
   }) async {
     return _dio.post(
       url,
       data: data,
       queryParameters: queryParams,
-      options: _buildOptions(token: token, headers: headers),
+      options: _buildOptions(
+        token: token,
+        headers: headers,
+        receiveTimeout: receiveTimeout,
+        sendTimeout: sendTimeout,
+      ),
     );
   }
 
@@ -283,6 +332,8 @@ class ApiRequest {
     Map<String, dynamic>? headers,
     String? token,
     ResponseType? responseType,
+    Duration? receiveTimeout,
+    Duration? sendTimeout,
   }) async {
     return _dio.get<T>(
       url,
@@ -291,6 +342,8 @@ class ApiRequest {
         token: token,
         headers: headers,
         responseType: responseType,
+        receiveTimeout: receiveTimeout,
+        sendTimeout: sendTimeout,
       ),
     );
   }
@@ -302,12 +355,19 @@ class ApiRequest {
     Map<String, dynamic>? queryParams,
     Map<String, dynamic>? headers,
     String? token,
+    Duration? receiveTimeout,
+    Duration? sendTimeout,
   }) async {
     return _dio.put(
       url,
       data: data,
       queryParameters: queryParams,
-      options: _buildOptions(token: token, headers: headers),
+      options: _buildOptions(
+        token: token,
+        headers: headers,
+        receiveTimeout: receiveTimeout,
+        sendTimeout: sendTimeout,
+      ),
     );
   }
 
@@ -318,12 +378,19 @@ class ApiRequest {
     Map<String, dynamic>? queryParams,
     Map<String, dynamic>? headers,
     String? token,
+    Duration? receiveTimeout,
+    Duration? sendTimeout,
   }) async {
     return _dio.delete(
       url,
       data: data,
       queryParameters: queryParams,
-      options: _buildOptions(token: token, headers: headers),
+      options: _buildOptions(
+        token: token,
+        headers: headers,
+        receiveTimeout: receiveTimeout,
+        sendTimeout: sendTimeout,
+      ),
     );
   }
 
@@ -333,6 +400,8 @@ class ApiRequest {
     required FormData data,
     Map<String, dynamic>? headers,
     String? token,
+    Duration? receiveTimeout,
+    Duration? sendTimeout,
   }) async {
     return _dio.post(
       url,
@@ -341,6 +410,8 @@ class ApiRequest {
         token: token,
         contentType: 'multipart/form-data',
         headers: headers,
+        receiveTimeout: receiveTimeout,
+        sendTimeout: sendTimeout,
       ),
     );
   }
@@ -351,6 +422,8 @@ class ApiRequest {
     required FormData data,
     Map<String, dynamic>? headers,
     String? token,
+    Duration? receiveTimeout,
+    Duration? sendTimeout,
   }) async {
     return _dio.put(
       url,
@@ -359,6 +432,8 @@ class ApiRequest {
         token: token,
         contentType: 'multipart/form-data',
         headers: headers,
+        receiveTimeout: receiveTimeout,
+        sendTimeout: sendTimeout,
       ),
     );
   }
@@ -369,13 +444,19 @@ class ApiRequest {
     String? contentType,
     Map<String, dynamic>? headers,
     ResponseType? responseType,
+    Duration? receiveTimeout,
+    Duration? sendTimeout,
   }) {
     final mergedHeaders = <String, dynamic>{
       if (token != null) 'Authorization': 'Bearer $token',
       ...?headers,
     };
 
-    if (mergedHeaders.isEmpty && contentType == null && responseType == null) {
+    if (mergedHeaders.isEmpty &&
+        contentType == null &&
+        responseType == null &&
+        receiveTimeout == null &&
+        sendTimeout == null) {
       return null;
     }
 
@@ -383,6 +464,8 @@ class ApiRequest {
       headers: mergedHeaders.isNotEmpty ? mergedHeaders : null,
       contentType: contentType,
       responseType: responseType,
+      receiveTimeout: receiveTimeout,
+      sendTimeout: sendTimeout,
     );
   }
 }

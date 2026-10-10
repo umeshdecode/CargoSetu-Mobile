@@ -8,6 +8,7 @@ import 'package:cargo_setu/auth/model/sign_up_req.dart';
 import 'package:cargo_setu/auth/signup/sign_up_provider.dart';
 import 'package:cargo_setu/company/company_controller.dart';
 import 'package:cargo_setu/services/session_service.dart';
+import 'package:cargo_setu/widgets/app_snackbar.dart';
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 
@@ -87,9 +88,9 @@ class SignUpController extends GetxController {
         // Registration succeeded but auto-login failed.
         // Still return true — the signup screen will handle navigation.
         log("⚠️ Auto-login failed (registration was successful): $loginError");
-        Get.snackbar(
-          "Account Created",
+        AppSnackbar.success(
           "Please login with your credentials.",
+          title: "Account Created",
         );
         return true;
       }
@@ -98,8 +99,7 @@ class SignUpController extends GetxController {
       log("Status: ${e.response?.statusCode}");
       log("Data: ${e.response?.data}");
 
-      Get.snackbar(
-        "Signup Failed",
+      AppSnackbar.error(
         e.response?.data?['message'] ??
             e.response?.data?.toString() ??
             "Server error",
@@ -108,7 +108,7 @@ class SignUpController extends GetxController {
       return false;
     } catch (e) {
       log("❌ UNKNOWN ERROR: $e");
-      Get.snackbar("Signup Failed", e.toString());
+      AppSnackbar.error(e.toString());
       return false;
     } finally {
       isLoading.value = false;
