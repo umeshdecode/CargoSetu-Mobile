@@ -2,6 +2,7 @@ import 'package:cargo_setu/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'marketplace_chat_screen.dart';
 import '../models/truck_post_model.dart';
 import '../models/marketplace_booking_model.dart';
 import '../models/marketplace_enums.dart';
@@ -282,17 +283,31 @@ class TruckDetailScreen extends StatelessWidget {
                           ),
                       ],
                     ),
-                    if (truck.driverPhone != null && truck.driverPhone!.isNotEmpty)
-                      IconButton.filled(
-                        onPressed: () {
-                          launchUrl(Uri.parse('tel:${truck.driverPhone}'));
-                        },
-                        icon: const Icon(Icons.call, size: 18),
-                        style: IconButton.styleFrom(
-                          backgroundColor: const Color(0xFF10B981),
-                          foregroundColor: Colors.white,
+                    Row(
+                      children: [
+                        IconButton.filled(
+                          onPressed: () => _startChat(context),
+                          icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                          style: IconButton.styleFrom(
+                            backgroundColor: const Color(0xFFF1F5F9),
+                            foregroundColor: AppColors.primaryBlue,
+                          ),
+                          tooltip: 'Chat with Operator / Driver',
                         ),
-                      ),
+                        if (truck.driverPhone != null && truck.driverPhone!.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          IconButton.filled(
+                            onPressed: () => _makePhoneCall(truck.driverPhone),
+                            icon: const Icon(Icons.call, size: 18),
+                            style: IconButton.styleFrom(
+                              backgroundColor: const Color(0xFF10B981),
+                              foregroundColor: Colors.white,
+                            ),
+                            tooltip: 'Call Driver',
+                          ),
+                        ],
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -300,25 +315,44 @@ class TruckDetailScreen extends StatelessWidget {
             const SizedBox(height: 24),
 
             // ─── Book Capacity CTA ───
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                onPressed: () => _showBookingDialog(context),
-                icon: const Icon(Icons.check_circle_outline, size: 18),
-                label: const Text(
-                  'Book Truck Capacity',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            Row(
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => _startChat(context),
+                  icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                  label: const Text('Chat'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primaryBlue,
+                    side: const BorderSide(color: AppColors.primaryBlue),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: SizedBox(
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _showBookingDialog(context),
+                      icon: const Icon(Icons.check_circle_outline, size: 18),
+                      label: const Text(
+                        'Book Truck Capacity',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryBlue,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
           ],
@@ -449,5 +483,70 @@ class TruckDetailScreen extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  Future<void> _startChat(BuildContext context) async {
+    if (truck.companyId == null || truck.postedByStaffId == null) {
+      Get.to(() => MarketplaceChatScreen(
+        title: truck.companyName ?? 'Transporter Chat',
+      ));
+      return;
+    }
+
+    Get.dialog(
+      const Center(child: CircularProgressIndicator()),
+      barrierDismissible: false,
+    );
+
+    try {
+      final service = MarketplaceService();
+      final conversation = await service.startConversation(
+        listingId: truck.listingId,
+        participantCompanyId: truck.companyId!,
+        participantStaffId: truck.postedByStaffId!,
+        initialMessage: 'Hi, I am inquiring about your truck ${truck.vehicleNumber ?? ""}: stationed at ${truck.currentCity}.',
+      );
+      Get.back(); // close loader
+
+      if (conversation != null && conversation.id != null) {
+        Get.to(() => MarketplaceChatScreen(
+          conversationId: conversation.id,
+          title: truck.companyName ?? 'Transporter Chat',
+        ));
+      } else {
+        Get.to(() => MarketplaceChatScreen(
+          title: truck.companyName ?? 'Transporter Chat',
+        ));
+      }
+    } catch (e) {
+      Get.back();
+      Get.snackbar('Error', 'Unable to initiate chat: $e');
+    }
+  }
+
+  Future<void> _makePhoneCall(String? rawPhone) async {
+    if (rawPhone == null || rawPhone.trim().isEmpty) {
+      Get.snackbar(
+        'Phone Unavailable',
+        'No phone number available for this contact.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: const Color(0xFFFEF2F2),
+        colorText: const Color(0xFF991B1B),
+      );
+      return;
+    }
+    final cleanPhone = rawPhone.replaceAll(RegExp(r'[^0-9+]'), '');
+    final uri = Uri.parse('tel:$cleanPhone');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      Get.snackbar(
+        'Call Failed',
+        'Could not launch phone dialer for $rawPhone',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: const Color(0xFFFEF2F2),
+        colorText: const Color(0xFF991B1B),
+      );
+    }
   }
 }

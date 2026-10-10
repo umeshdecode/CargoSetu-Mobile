@@ -20,6 +20,13 @@ class MarketplaceService {
     String? destinationCity,
     String? cargoType,
     DateTime? pickupDate,
+    DateTime? pickupFrom,
+    DateTime? pickupTo,
+    double? minWeight,
+    double? maxWeight,
+    String? requiredTruckType,
+    int? page,
+    int? size,
   }) async {
     try {
       final query = <String, dynamic>{};
@@ -27,6 +34,13 @@ class MarketplaceService {
       if (destinationCity != null && destinationCity.trim().isNotEmpty) query['destinationCity'] = destinationCity.trim();
       if (cargoType != null && cargoType.isNotEmpty) query['cargoType'] = cargoType;
       if (pickupDate != null) query['pickupDate'] = pickupDate.toIso8601String();
+      if (pickupFrom != null) query['pickupFrom'] = pickupFrom.toIso8601String();
+      if (pickupTo != null) query['pickupTo'] = pickupTo.toIso8601String();
+      if (minWeight != null) query['minWeight'] = minWeight;
+      if (maxWeight != null) query['maxWeight'] = maxWeight;
+      if (requiredTruckType != null && requiredTruckType.isNotEmpty) query['requiredTruckType'] = requiredTruckType;
+      if (page != null) query['page'] = page;
+      if (size != null) query['size'] = size;
 
       final response = await _api.get(
         url: Urls.marketplaceLoads,
@@ -105,15 +119,23 @@ class MarketplaceService {
   Future<List<TruckPostModel>> searchTrucks({
     String? currentCity,
     String? routeTo,
+    String? originCity,
+    String? destinationCity,
     String? truckType,
     double? minCapacity,
+    int? page,
+    int? size,
   }) async {
     try {
       final query = <String, dynamic>{};
       if (currentCity != null && currentCity.trim().isNotEmpty) query['currentCity'] = currentCity.trim();
       if (routeTo != null && routeTo.trim().isNotEmpty) query['routeTo'] = routeTo.trim();
+      if (originCity != null && originCity.trim().isNotEmpty) query['originCity'] = originCity.trim();
+      if (destinationCity != null && destinationCity.trim().isNotEmpty) query['destinationCity'] = destinationCity.trim();
       if (truckType != null && truckType.isNotEmpty) query['truckType'] = truckType;
       if (minCapacity != null) query['minCapacity'] = minCapacity;
+      if (page != null) query['page'] = page;
+      if (size != null) query['size'] = size;
 
       final response = await _api.get(
         url: Urls.marketplaceTrucks,
@@ -211,8 +233,11 @@ class MarketplaceService {
 
   Future<bool> submitOffer(MarketplaceOfferModel offer) async {
     try {
+      final url = offer.listingId != null
+          ? Urls.marketplaceOffersForListing(offer.listingId!)
+          : Urls.marketplaceOffers;
       final response = await _api.post(
-        url: Urls.marketplaceOffers,
+        url: url,
         data: offer.toJson(),
       );
       return response.statusCode == 200 || response.statusCode == 201;
@@ -307,8 +332,11 @@ class MarketplaceService {
 
   Future<bool> createBooking(MarketplaceBookingModel booking) async {
     try {
+      final url = booking.listingId != null
+          ? Urls.marketplaceBookListing(booking.listingId!)
+          : Urls.marketplaceBookings;
       final response = await _api.post(
-        url: Urls.marketplaceBookings,
+        url: url,
         data: booking.toJson(),
       );
       return response.statusCode == 200 || response.statusCode == 201;
@@ -484,15 +512,60 @@ class MarketplaceService {
     }
   }
 
+  Future<ChatConversationModel?> startConversation({
+    int? listingId,
+    int? bookingId,
+    required int participantCompanyId,
+    required int participantStaffId,
+    String? initialMessage,
+  }) async {
+    try {
+      final response = await _api.post(
+        url: Urls.marketplaceConversations,
+        data: {
+          if (listingId != null) 'listingId': listingId,
+          if (bookingId != null) 'bookingId': bookingId,
+          'participantCompanyId': participantCompanyId,
+          'participantStaffId': participantStaffId,
+          if (initialMessage != null && initialMessage.trim().isNotEmpty)
+            'initialMessage': initialMessage.trim(),
+        },
+      );
+      if ((response.statusCode == 200 || response.statusCode == 201) && response.data != null) {
+        final body = response.data;
+        final data = body is Map ? (body['data'] ?? body) : body;
+        if (data is Map<String, dynamic>) {
+          return ChatConversationModel.fromJson(data);
+        }
+      }
+      return null;
+    } catch (e) {
+      log('❌ startConversation error: $e');
+      return null;
+    }
+  }
+
   Future<bool> sendMessage(int conversationId, String message) async {
     try {
       final response = await _api.post(
         url: Urls.marketplaceMessages(conversationId),
         data: {'message': message, 'messageType': 'TEXT'},
       );
-      return response.statusCode == 200;
+      return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
       log('❌ sendMessage error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> markMessagesAsRead(int conversationId) async {
+    try {
+      final response = await _api.post(
+        url: Urls.marketplaceConversationRead(conversationId),
+      );
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      log('❌ markMessagesAsRead error: $e');
       return false;
     }
   }

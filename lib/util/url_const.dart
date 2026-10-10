@@ -1,8 +1,11 @@
 /// All API endpoint URLs for the CargoSetu backend.
 class Urls {
-  static const String baseUrl = "http://192.168.1.6:31201";
-  // static const String baseUrl = "https://code-setu-app.onrender.com";
-  // static const String baseUrl = "https://gameless-vacillating-stevie.ngrok-free.dev";
+  /// Base API URL configurable via --dart-define=API_BASE_URL=<url>
+  /// Defaults to deployed production backend: https://code-setu-app.onrender.com
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://code-setu-app.onrender.com',
+  );
 
   // ─── AUTH ───────────────────────────────────────────────
   static const String login = "$baseUrl/auth/login";
@@ -93,12 +96,13 @@ class Urls {
   static String marketplaceTruckClose(int id) => "$marketplaceTrucks/$id/close";
 
   static const String marketplaceOffers = "$marketplace/offers";
-  static String marketplaceOffersForListing(int listingId) => "$marketplaceOffers/listing/$listingId";
+  static String marketplaceOffersForListing(int listingId) => "$marketplace/listings/$listingId/offers";
   static String marketplaceOfferAccept(int id) => "$marketplaceOffers/$id/accept";
   static String marketplaceOfferReject(int id) => "$marketplaceOffers/$id/reject";
   static String marketplaceOfferCounter(int id) => "$marketplaceOffers/$id/counter";
 
   static const String marketplaceBookings = "$marketplace/bookings";
+  static String marketplaceBookListing(int listingId) => "$marketplaceBookings/listing/$listingId";
   static String marketplaceBookingById(int id) => "$marketplaceBookings/$id";
   static String marketplaceBookingCancel(int id) => "$marketplaceBookings/$id/cancel";
   static String marketplaceBookingAssign(int id) => "$marketplaceBookings/$id/assign";

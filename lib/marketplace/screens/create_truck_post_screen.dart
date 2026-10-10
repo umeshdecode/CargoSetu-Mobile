@@ -5,6 +5,9 @@ import 'package:intl/intl.dart';
 import '../models/marketplace_enums.dart';
 import '../models/truck_post_model.dart';
 import '../services/marketplace_service.dart';
+import '../../vehicle_management/services/vehicle_service.dart';
+import '../../vehicle_management/models/vehicle_model.dart';
+import '../../vehicle_management/models/driver_model.dart';
 
 /// Professional multi-step form to post available truck capacity.
 /// Tailored for transporters, fleet operators, and single-truck owners.
@@ -19,6 +22,13 @@ class CreateTruckPostScreen extends StatefulWidget {
 class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
   final _formKey = GlobalKey<FormState>();
   final _service = MarketplaceService();
+  final _vehicleService = VehicleService();
+
+  List<VehicleModel> _myVehicles = [];
+  List<DriverModel> _myDrivers = [];
+  int? _selectedVehicleId;
+  int? _selectedDriverId;
+  bool _isLoadingFleet = true;
 
   // Location & Routes
   final _currentCityCtrl = TextEditingController();
@@ -59,6 +69,79 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
     'Tipper / Dumper',
     'Multi-Axle Trailer',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFleetData();
+  }
+
+  Future<void> _loadFleetData() async {
+    try {
+      final results = await Future.wait([
+        _vehicleService.getVehicles(),
+        _vehicleService.getDrivers(),
+      ]);
+      if (mounted) {
+        setState(() {
+          _myVehicles = results[0] as List<VehicleModel>;
+          _myDrivers = results[1] as List<DriverModel>;
+          _isLoadingFleet = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingFleet = false);
+    }
+  }
+
+  void _onVehicleSelected(int? id) {
+    setState(() {
+      _selectedVehicleId = id;
+      if (id != null) {
+        final matches = _myVehicles.where((x) => x.id == id);
+        if (matches.isNotEmpty) {
+          final v = matches.first;
+          _vehicleNumberCtrl.text = v.registrationNumber;
+          if (v.truckType != null && v.truckType!.isNotEmpty) {
+            if (_truckTypeOptions.contains(v.truckType)) {
+              _truckType = v.truckType!;
+            }
+          }
+          if (v.bodyType != null && v.bodyType!.isNotEmpty) {
+            _bodyType = v.bodyType!;
+          }
+          if (v.truckLengthFeet != null) {
+            _lengthFeetCtrl.text = v.truckLengthFeet.toString();
+          }
+          if (v.passingCapacityTons != null) {
+            _passingCapacityCtrl.text = v.passingCapacityTons.toString();
+            _capacityCtrl.text = v.passingCapacityTons.toString();
+          } else if (v.capacityKg > 0) {
+            final tons = (v.capacityKg / 1000.0).toStringAsFixed(1);
+            _passingCapacityCtrl.text = tons;
+            _capacityCtrl.text = tons;
+          }
+          if (v.currentLocation != null && v.currentLocation!.isNotEmpty && _currentCityCtrl.text.isEmpty) {
+            _currentCityCtrl.text = v.currentLocation!;
+          }
+        }
+      }
+    });
+  }
+
+  void _onDriverSelected(int? id) {
+    setState(() {
+      _selectedDriverId = id;
+      if (id != null) {
+        final matches = _myDrivers.where((x) => x.id == id);
+        if (matches.isNotEmpty) {
+          final d = matches.first;
+          _driverNameCtrl.text = d.name;
+          _driverPhoneCtrl.text = d.phoneNumber;
+        }
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -226,6 +309,40 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
       title: 'Vehicle & Capacity Details',
       icon: Icons.local_shipping_outlined,
       children: [
+        if (_isLoadingFleet) ...[
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          ),
+        ] else if (_myVehicles.isNotEmpty) ...[
+          _buildDropdown<int?>(
+            label: 'Select from Your Fleet (Autofill)',
+            value: _selectedVehicleId,
+            items: [
+              const DropdownMenuItem<int?>(
+                value: null,
+                child: Text('Manual Entry / New Vehicle'),
+              ),
+              ..._myVehicles.map((v) {
+                final display = v.registrationNumber.isNotEmpty
+                    ? '${v.registrationNumber} (${v.model.isNotEmpty ? v.model : v.manufacturer})'
+                    : 'Vehicle #${v.id}';
+                return DropdownMenuItem<int?>(
+                  value: v.id,
+                  child: Text(display),
+                );
+              }),
+            ],
+            onChanged: _onVehicleSelected,
+          ),
+          const SizedBox(height: 12),
+        ],
         Row(
           children: [
             Expanded(
@@ -323,6 +440,26 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
       title: 'Driver Contact (Optional)',
       icon: Icons.person_outline,
       children: [
+        if (_myDrivers.isNotEmpty) ...[
+          _buildDropdown<int?>(
+            label: 'Select from Your Drivers (Autofill)',
+            value: _selectedDriverId,
+            items: [
+              const DropdownMenuItem<int?>(
+                value: null,
+                child: Text('Manual Entry / Unassigned'),
+              ),
+              ..._myDrivers.map((d) {
+                return DropdownMenuItem<int?>(
+                  value: d.id,
+                  child: Text('${d.name} (${d.phoneNumber})'),
+                );
+              }),
+            ],
+            onChanged: _onDriverSelected,
+          ),
+          const SizedBox(height: 12),
+        ],
         _buildTextField(
           label: 'Driver Name',
           hint: 'e.g. Rajesh Patil',
@@ -664,6 +801,8 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
           : null;
 
       final truck = TruckPostModel(
+        vehicleId: _selectedVehicleId ?? (_myVehicles.isNotEmpty ? _myVehicles.first.id : null),
+        driverId: _selectedDriverId,
         currentCity: _currentCityCtrl.text.trim(),
         currentState: _currentStateCtrl.text.trim().isNotEmpty ? _currentStateCtrl.text.trim() : null,
         routeTo: _routeToCtrl.text.trim(),

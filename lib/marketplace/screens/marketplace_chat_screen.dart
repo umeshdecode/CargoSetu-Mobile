@@ -67,6 +67,7 @@ class _MarketplaceChatScreenState extends State<MarketplaceChatScreen> {
     if (mounted) {
       setState(() => _messages = msgs);
       _scrollToBottom();
+      _service.markMessagesAsRead(convoId);
     }
   }
 

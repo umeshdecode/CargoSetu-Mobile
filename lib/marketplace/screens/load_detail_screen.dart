@@ -6,6 +6,8 @@ import '../models/load_post_model.dart';
 import '../models/marketplace_offer_model.dart';
 import '../widgets/offer_bottom_sheet.dart';
 import '../services/marketplace_service.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'marketplace_chat_screen.dart';
 
 /// Comprehensive specification and bidding screen for a freight load.
 /// Displays route, commodity characteristics, truck requirements, and commercial terms
@@ -296,61 +298,145 @@ class LoadDetailScreen extends StatelessWidget {
               ),
             ),
 
+            const SizedBox(height: 16),
+
+            // ─── Shipper Card ───
+            _buildCard(
+              title: 'Posted By',
+              icon: Icons.business_outlined,
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.business, color: AppColors.primaryBlue, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          load.companyName ?? 'Verified Enterprise Shipper',
+                          style: const TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          load.verificationStatus ?? 'Identity & GST Verified',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF10B981),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton.filled(
+                    onPressed: () => _startChat(context),
+                    icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                    style: IconButton.styleFrom(
+                      backgroundColor: const Color(0xFFF1F5F9),
+                      foregroundColor: AppColors.primaryBlue,
+                    ),
+                    tooltip: 'Chat with Shipper',
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filled(
+                    onPressed: () => _makePhoneCall(null),
+                    icon: const Icon(Icons.call, size: 18),
+                    style: IconButton.styleFrom(
+                      backgroundColor: const Color(0xFFF1F5F9),
+                      foregroundColor: const Color(0xFF10B981),
+                    ),
+                    tooltip: 'Call Shipper',
+                  ),
+                ],
+              ),
+            ),
+
             const SizedBox(height: 24),
 
             // ─── Bottom Action CTA ───
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  OfferBottomSheet.show(
-                    context: context,
-                    title: 'Submit Offer for Load',
-                    routeSubtitle: '${load.originCity} → ${load.destinationCity}',
-                    targetPrice: load.askingPrice,
-                    onSubmit: (amount, advancePct, terms, remarks) async {
-                      if (load.listingId == null) return;
-                      Get.dialog(
-                        const Center(child: CircularProgressIndicator()),
-                        barrierDismissible: false,
-                      );
-                      final service = MarketplaceService();
-                      final offer = MarketplaceOfferModel(
-                        listingId: load.listingId,
-                        offeredAmount: amount,
-                        advancePercentage: advancePct,
-                        paymentTerms: terms,
-                        remarks: remarks,
-                      );
-                      final success = await service.submitOffer(offer);
-                      Get.back(); // close loader
-                      if (success) {
-                        Get.snackbar(
-                          'Bid Placed!',
-                          'Your offer of ₹${amount.toStringAsFixed(0)} was sent to ${load.companyName ?? "the shipper"}.',
-                          snackPosition: SnackPosition.TOP,
-                          backgroundColor: const Color(0xFFECFDF5),
-                          colorText: const Color(0xFF065F46),
-                        );
-                      }
-                    },
-                  );
-                },
-                icon: const Icon(Icons.gavel, size: 18),
-                label: const Text(
-                  'Submit Bid / Book Load',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            Row(
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => _startChat(context),
+                  icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                  label: const Text('Chat'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primaryBlue,
+                    side: const BorderSide(color: AppColors.primaryBlue),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: SizedBox(
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        OfferBottomSheet.show(
+                          context: context,
+                          title: 'Submit Offer for Load',
+                          routeSubtitle: '${load.originCity} → ${load.destinationCity}',
+                          targetPrice: load.askingPrice,
+                          onSubmit: (amount, advancePct, terms, remarks) async {
+                            if (load.listingId == null) return;
+                            Get.dialog(
+                              const Center(child: CircularProgressIndicator()),
+                              barrierDismissible: false,
+                            );
+                            final service = MarketplaceService();
+                            final offer = MarketplaceOfferModel(
+                              listingId: load.listingId,
+                              offeredAmount: amount,
+                              advancePercentage: advancePct,
+                              paymentTerms: terms,
+                              remarks: remarks,
+                            );
+                            final success = await service.submitOffer(offer);
+                            Get.back(); // close loader
+                            if (success) {
+                              Get.snackbar(
+                                'Bid Placed!',
+                                'Your offer of ₹${amount.toStringAsFixed(0)} was sent to ${load.companyName ?? "the shipper"}.',
+                                snackPosition: SnackPosition.TOP,
+                                backgroundColor: const Color(0xFFECFDF5),
+                                colorText: const Color(0xFF065F46),
+                              );
+                            }
+                          },
+                        );
+                      },
+                      icon: const Icon(Icons.gavel, size: 18),
+                      label: const Text(
+                        'Submit Bid / Book Load',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryBlue,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
           ],
@@ -429,6 +515,71 @@ class LoadDetailScreen extends StatelessWidget {
       return DateFormat('dd MMM yyyy').format(date);
     } catch (_) {
       return isoDate;
+    }
+  }
+
+  Future<void> _startChat(BuildContext context) async {
+    if (load.companyId == null || load.postedByStaffId == null) {
+      Get.to(() => MarketplaceChatScreen(
+        title: load.companyName ?? 'Shipper Chat',
+      ));
+      return;
+    }
+
+    Get.dialog(
+      const Center(child: CircularProgressIndicator()),
+      barrierDismissible: false,
+    );
+
+    try {
+      final service = MarketplaceService();
+      final conversation = await service.startConversation(
+        listingId: load.listingId,
+        participantCompanyId: load.companyId!,
+        participantStaffId: load.postedByStaffId!,
+        initialMessage: 'Hi, I am interested in your load ${load.listingNumber ?? ""}: ${load.originCity} to ${load.destinationCity}.',
+      );
+      Get.back(); // close loader
+
+      if (conversation != null && conversation.id != null) {
+        Get.to(() => MarketplaceChatScreen(
+          conversationId: conversation.id,
+          title: load.companyName ?? 'Shipper Chat',
+        ));
+      } else {
+        Get.to(() => MarketplaceChatScreen(
+          title: load.companyName ?? 'Shipper Chat',
+        ));
+      }
+    } catch (e) {
+      Get.back();
+      Get.snackbar('Error', 'Unable to initiate chat: $e');
+    }
+  }
+
+  Future<void> _makePhoneCall(String? rawPhone) async {
+    if (rawPhone == null || rawPhone.trim().isEmpty) {
+      Get.snackbar(
+        'Phone Unavailable',
+        'No phone number available for this contact.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: const Color(0xFFFEF2F2),
+        colorText: const Color(0xFF991B1B),
+      );
+      return;
+    }
+    final cleanPhone = rawPhone.replaceAll(RegExp(r'[^0-9+]'), '');
+    final uri = Uri.parse('tel:$cleanPhone');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      Get.snackbar(
+        'Call Failed',
+        'Could not launch phone dialer for $rawPhone',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: const Color(0xFFFEF2F2),
+        colorText: const Color(0xFF991B1B),
+      );
     }
   }
 }
