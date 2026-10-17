@@ -7,7 +7,11 @@ class LoginProvider {
   final ApiRequest _api = ApiRequest();
 
   Future<Response> login(LoginRequest request) {
-    return _api.post(url: Urls.login, data: request.toJson());
+    return _api.post(
+      url: Urls.login,
+      data: request.toJson(),
+      responseType: ResponseType.plain,
+    );
   }
 
   Future<Response> sendOtp(String mobileNumber) {
@@ -18,6 +22,7 @@ class LoginProvider {
     return _api.post(
       url: Urls.verifyOtp,
       data: {"mobileNumber": mobileNumber, "otpCode": otpCode},
+      responseType: ResponseType.plain,
     );
   }
 }

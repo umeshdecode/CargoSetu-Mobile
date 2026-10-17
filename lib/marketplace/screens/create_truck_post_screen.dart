@@ -13,7 +13,14 @@ import '../../vehicle_management/models/driver_model.dart';
 /// Tailored for transporters, fleet operators, and single-truck owners.
 /// Zero internal database primary key exposure.
 class CreateTruckPostScreen extends StatefulWidget {
-  const CreateTruckPostScreen({super.key});
+  final MarketplaceService? service;
+  final VehicleService? vehicleService;
+
+  const CreateTruckPostScreen({
+    super.key,
+    this.service,
+    this.vehicleService,
+  });
 
   @override
   State<CreateTruckPostScreen> createState() => _CreateTruckPostScreenState();
@@ -21,14 +28,15 @@ class CreateTruckPostScreen extends StatefulWidget {
 
 class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _service = MarketplaceService();
-  final _vehicleService = VehicleService();
+  late final MarketplaceService _service;
+  late final VehicleService _vehicleService;
 
   List<VehicleModel> _myVehicles = [];
   List<DriverModel> _myDrivers = [];
   int? _selectedVehicleId;
   int? _selectedDriverId;
   bool _isLoadingFleet = true;
+  String? _fleetLoadError;
 
   // Location & Routes
   final _currentCityCtrl = TextEditingController();
@@ -68,15 +76,60 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
     'Tanker',
     'Tipper / Dumper',
     'Multi-Axle Trailer',
+    'LCV',
+    'OPEN_TRUCK',
+    'CONTAINER',
+    'TIPPER',
+    'TANKER',
+    'TRAILER',
+    'REEFER',
+  ];
+
+  final List<String> _bodyTypeOptions = [
+    'Open Body',
+    'Closed Container',
+    'Flatbed',
+    'High Side',
+    'LCV_OPEN',
+    'LCV_CONTAINER',
+    'OPEN_FULL_BODY',
+    'OPEN_HALF_BODY',
+    'OPEN_HIGH_BED',
+    'FLATBED',
+    'CLOSED_CONTAINER',
+    'HIGH_CUBE_CONTAINER',
+    'INSULATED_CONTAINER',
+    'TIPPER_BOX_BODY',
+    'TIPPER_ROCK_BODY',
+    'STAINLESS_STEEL_TANKER',
+    'ALUMINUM_TANKER',
+    'CHEMICAL_TANKER',
+    'PETROLEUM_TANKER',
+    'MILK_TANKER',
+    'WATER_TANKER',
+    'FLATBED_TRAILER',
+    'LOWBED_TRAILER',
+    'HIGHBED_TRAILER',
+    'SKELETAL_TRAILER',
+    'REFRIGERATED_CONTAINER',
+    'COLD_VAN',
   ];
 
   @override
   void initState() {
     super.initState();
+    _service = widget.service ?? MarketplaceService();
+    _vehicleService = widget.vehicleService ?? VehicleService();
     _loadFleetData();
   }
 
   Future<void> _loadFleetData() async {
+    if (mounted) {
+      setState(() {
+        _isLoadingFleet = true;
+        _fleetLoadError = null;
+      });
+    }
     try {
       final results = await Future.wait([
         _vehicleService.getVehicles(),
@@ -87,10 +140,16 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
           _myVehicles = results[0] as List<VehicleModel>;
           _myDrivers = results[1] as List<DriverModel>;
           _isLoadingFleet = false;
+          _fleetLoadError = null;
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _isLoadingFleet = false);
+      if (mounted) {
+        setState(() {
+          _isLoadingFleet = false;
+          _fleetLoadError = 'Unable to load your fleet vehicles. Please retry.';
+        });
+      }
     }
   }
 
@@ -102,13 +161,19 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
         if (matches.isNotEmpty) {
           final v = matches.first;
           _vehicleNumberCtrl.text = v.registrationNumber;
-          if (v.truckType != null && v.truckType!.isNotEmpty) {
-            if (_truckTypeOptions.contains(v.truckType)) {
-              _truckType = v.truckType!;
+          if (v.truckType != null && v.truckType!.trim().isNotEmpty) {
+            final truckType = v.truckType!.trim();
+            if (!_truckTypeOptions.contains(truckType)) {
+              _truckTypeOptions.add(truckType);
             }
+            _truckType = truckType;
           }
-          if (v.bodyType != null && v.bodyType!.isNotEmpty) {
-            _bodyType = v.bodyType!;
+          if (v.bodyType != null && v.bodyType!.trim().isNotEmpty) {
+            final bodyType = v.bodyType!.trim();
+            if (!_bodyTypeOptions.contains(bodyType)) {
+              _bodyTypeOptions.add(bodyType);
+            }
+            _bodyType = bodyType;
           }
           if (v.truckLengthFeet != null) {
             _lengthFeetCtrl.text = v.truckLengthFeet.toString();
@@ -320,14 +385,77 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
               ),
             ),
           ),
-        ] else if (_myVehicles.isNotEmpty) ...[
+        ] else if (_fleetLoadError != null) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF2F2),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFFECACA)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Color(0xFFDC2626), size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _fleetLoadError!,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: Color(0xFF991B1B),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: _loadFleetData,
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ] else if (_myVehicles.isEmpty) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFBEB),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFFDE68A)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 18),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'No vehicles found in your fleet. Please add a vehicle to your fleet before posting availability.',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: Color(0xFF92400E),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: _loadFleetData,
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ] else ...[
           _buildDropdown<int?>(
-            label: 'Select from Your Fleet (Autofill)',
+            label: 'Select Vehicle from Your Fleet *',
             value: _selectedVehicleId,
+            validator: (val) => val == null ? 'Please select a vehicle from your fleet' : null,
             items: [
               const DropdownMenuItem<int?>(
                 value: null,
-                child: Text('Manual Entry / New Vehicle'),
+                child: Text('Select a vehicle...'),
               ),
               ..._myVehicles.map((v) {
                 final display = v.registrationNumber.isNotEmpty
@@ -404,7 +532,10 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
           label: 'Truck Type',
           value: _truckType,
           items: _truckTypeOptions.map((t) {
-            return DropdownMenuItem(value: t, child: Text(t));
+            return DropdownMenuItem(
+              value: t,
+              child: Text(t.replaceAll('_', ' ')),
+            );
           }).toList(),
           onChanged: (val) {
             if (val != null) setState(() => _truckType = val);
@@ -414,12 +545,12 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
         _buildDropdown<String>(
           label: 'Body Type',
           value: _bodyType,
-          items: const [
-            DropdownMenuItem(value: 'Open Body', child: Text('Open Body')),
-            DropdownMenuItem(value: 'Closed Container', child: Text('Closed Container')),
-            DropdownMenuItem(value: 'Flatbed', child: Text('Flatbed')),
-            DropdownMenuItem(value: 'High Side', child: Text('High Side')),
-          ],
+          items: _bodyTypeOptions.map((b) {
+            return DropdownMenuItem(
+              value: b,
+              child: Text(b.replaceAll('_', ' ')),
+            );
+          }).toList(),
           onChanged: (val) {
             if (val != null) setState(() => _bodyType = val);
           },
@@ -649,7 +780,20 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
     required T value,
     required List<DropdownMenuItem<T>> items,
     required ValueChanged<T?> onChanged,
+    String? Function(T?)? validator,
   }) {
+    final seenValues = <T?>{};
+    final uniqueItems = <DropdownMenuItem<T>>[];
+    for (final item in items) {
+      if (seenValues.add(item.value)) {
+        uniqueItems.add(item);
+      }
+    }
+    final hasMatchingValue = uniqueItems.any((item) => item.value == value);
+    final T? effectiveValue = hasMatchingValue
+        ? value
+        : (uniqueItems.isNotEmpty ? uniqueItems.first.value : null);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -663,9 +807,11 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
         ),
         const SizedBox(height: 6),
         DropdownButtonFormField<T>(
-          value: value,
-          items: items,
+          key: ValueKey('$label:$effectiveValue'),
+          initialValue: effectiveValue,
+          items: uniqueItems,
           onChanged: onChanged,
+          validator: validator,
           style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A)),
           decoration: InputDecoration(
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -779,6 +925,15 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
   }
 
   Future<void> _submitPost() async {
+    if (_selectedVehicleId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a vehicle from your fleet before publishing.'),
+        ),
+      );
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
 
     if (_availableFrom == null) {
@@ -801,7 +956,7 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
           : null;
 
       final truck = TruckPostModel(
-        vehicleId: _selectedVehicleId ?? (_myVehicles.isNotEmpty ? _myVehicles.first.id : null),
+        vehicleId: _selectedVehicleId,
         driverId: _selectedDriverId,
         currentCity: _currentCityCtrl.text.trim(),
         currentState: _currentStateCtrl.text.trim().isNotEmpty ? _currentStateCtrl.text.trim() : null,

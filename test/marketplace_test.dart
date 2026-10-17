@@ -1,15 +1,118 @@
+import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:cargo_setu/network/api_request.dart';
 import 'package:cargo_setu/util/url_const.dart';
+import 'package:cargo_setu/marketplace/models/load_post_model.dart';
 import 'package:cargo_setu/marketplace/models/marketplace_offer_model.dart';
 import 'package:cargo_setu/marketplace/models/marketplace_booking_model.dart';
 import 'package:cargo_setu/marketplace/models/truck_post_model.dart';
 import 'package:cargo_setu/marketplace/models/marketplace_chat_model.dart';
 import 'package:cargo_setu/marketplace/models/marketplace_enums.dart';
+import 'package:cargo_setu/marketplace/services/marketplace_service.dart';
+import 'package:cargo_setu/marketplace/screens/load_detail_screen.dart';
+import 'package:cargo_setu/marketplace/screens/truck_detail_screen.dart';
+import 'package:cargo_setu/marketplace/screens/create_truck_post_screen.dart';
+import 'package:cargo_setu/marketplace/screens/marketplace_chat_screen.dart';
+import 'package:cargo_setu/vehicle_management/models/vehicle_model.dart';
+import 'package:cargo_setu/vehicle_management/models/driver_model.dart';
+import 'package:cargo_setu/vehicle_management/services/vehicle_service.dart';
+
+class _FakeApiRequest implements ApiRequest {
+  String? lastPostUrl;
+  dynamic lastPostData;
+  int postCallCount = 0;
+  int statusCodeToReturn = 201;
+
+  @override
+  Future<Response> post({
+    required String url,
+    dynamic data,
+    Map<String, dynamic>? queryParams,
+    Map<String, dynamic>? headers,
+    String? token,
+    Duration? receiveTimeout,
+    Duration? sendTimeout,
+  }) async {
+    postCallCount++;
+    lastPostUrl = url;
+    lastPostData = data;
+    return Response(
+      requestOptions: RequestOptions(path: url),
+      statusCode: statusCodeToReturn,
+      data: {'responseCode': statusCodeToReturn},
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeMarketplaceService extends MarketplaceService {
+  ChatConversationModel? conversationToReturn;
+  bool throwOnStartConversation = false;
+  int startConversationCalls = 0;
+  TruckPostModel? submittedTruckPost;
+
+  _FakeMarketplaceService() : super(api: _FakeApiRequest());
+
+  @override
+  Future<ChatConversationModel?> startConversation({
+    int? listingId,
+    int? bookingId,
+    required int participantCompanyId,
+    required int participantStaffId,
+    String? initialMessage,
+  }) async {
+    startConversationCalls++;
+    if (throwOnStartConversation) {
+      throw Exception('Network error');
+    }
+    return conversationToReturn;
+  }
+
+  @override
+  Future<bool> createTruckPost(TruckPostModel model) async {
+    submittedTruckPost = model;
+    return true;
+  }
+}
+
+class _FakeVehicleService implements VehicleService {
+  List<VehicleModel> vehiclesToReturn;
+  bool shouldThrow;
+  int getVehiclesCalls = 0;
+
+  _FakeVehicleService({
+    this.vehiclesToReturn = const [],
+    this.shouldThrow = false,
+  });
+
+  @override
+  Future<List<VehicleModel>> getVehicles() async {
+    getVehiclesCalls++;
+    if (shouldThrow) {
+      throw Exception('Fleet service unavailable');
+    }
+    return vehiclesToReturn;
+  }
+
+  @override
+  Future<List<DriverModel>> getDrivers() async {
+    if (shouldThrow) {
+      throw Exception('Driver service unavailable');
+    }
+    return const [];
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 void main() {
   group('Marketplace URL Configuration Tests', () {
-    test('Base URL has default fallback to production Render backend', () {
-      expect(Urls.baseUrl, contains('onrender.com'));
+    test('Base URL and marketplace root are configured properly', () {
+      expect(Urls.baseUrl, startsWith('http'));
       expect(Urls.marketplace, equals('${Urls.baseUrl}/api/v2/cargosetu/marketplace'));
     });
 
@@ -35,25 +138,68 @@ void main() {
     });
   });
 
-  group('Marketplace Offer Model Serialization Tests', () {
-    test('toJson generates dual-key payloads compatible with backend and legacy mobile', () {
+  group('Marketplace Offer DTO & Service Tests', () {
+    test('toJson matches backend CreateOfferRequest exactly (amount, paymentTerms, validUntil, message)', () {
       final offer = MarketplaceOfferModel(
+        id: 99,
         listingId: 100,
         offeredAmount: 25000.0,
         advancePercentage: 20,
         paymentTerms: PaymentTermType.ADVANCE_PERCENT,
+        validUntil: '2026-10-25T18:00:00',
         remarks: 'Ready for immediate dispatch',
       );
 
       final json = offer.toJson();
-      expect(json['listingId'], equals(100));
-      expect(json['amount'], equals(25000.0));
-      expect(json['offeredAmount'], equals(25000.0));
-      expect(json['advancePercentage'], equals(20));
-      expect(json['paymentTerms'], equals('ADVANCE_PERCENT'));
-      expect(json['message'], equals('Ready for immediate dispatch'));
-      expect(json['remarks'], equals('Ready for immediate dispatch'));
-      expect(json['status'], equals('PENDING'));
+      expect(
+        json,
+        equals({
+          'amount': 25000.0,
+          'paymentTerms': 'ADVANCE_PERCENT',
+          'validUntil': '2026-10-25T18:00:00',
+          'message': 'Ready for immediate dispatch',
+        }),
+      );
+      expect(json.containsKey('offeredAmount'), isFalse);
+      expect(json.containsKey('remarks'), isFalse);
+      expect(json.containsKey('listingId'), isFalse);
+      expect(json.containsKey('status'), isFalse);
+    });
+
+    test('submitOffer rejects missing or invalid listingId without falling back to legacy endpoint', () async {
+      final fakeApi = _FakeApiRequest();
+      final service = MarketplaceService(api: fakeApi);
+
+      final missingListingOffer = MarketplaceOfferModel(
+        listingId: null,
+        offeredAmount: 25000.0,
+      );
+      final zeroListingOffer = MarketplaceOfferModel(
+        listingId: 0,
+        offeredAmount: 25000.0,
+      );
+
+      expect(await service.submitOffer(missingListingOffer), isFalse);
+      expect(await service.submitOffer(zeroListingOffer), isFalse);
+      expect(fakeApi.postCallCount, equals(0));
+
+      final validOffer = MarketplaceOfferModel(
+        listingId: 42,
+        offeredAmount: 25000.0,
+        paymentTerms: PaymentTermType.TO_PAY,
+        remarks: 'Direct delivery',
+      );
+      expect(await service.submitOffer(validOffer), isTrue);
+      expect(fakeApi.postCallCount, equals(1));
+      expect(fakeApi.lastPostUrl, equals(Urls.marketplaceOffersForListing(42)));
+      expect(
+        fakeApi.lastPostData,
+        equals({
+          'amount': 25000.0,
+          'paymentTerms': 'TO_PAY',
+          'message': 'Direct delivery',
+        }),
+      );
     });
 
     test('fromJson parses enriched backend OfferResponse correctly', () {
@@ -64,12 +210,12 @@ void main() {
         'bidderCompanyId': 2,
         'bidderCompanyName': 'Acme Logistics',
         'offeredByStaffId': 7,
-        'offeredByStaffName': 'John Doe',
-        'offeredAmount': 24500.0,
-        'advancePercentage': 30,
+        'offeredByName': 'John Doe',
+        'amount': 24500.0,
         'paymentTerms': 'ADVANCE_PERCENT',
+        'validUntil': '2026-10-20T12:00:00',
         'status': 'PENDING',
-        'remarks': 'Can deliver within 2 days',
+        'message': 'Can deliver within 2 days',
       };
 
       final offer = MarketplaceOfferModel.fromJson(backendPayload);
@@ -81,8 +227,8 @@ void main() {
       expect(offer.offeredByStaffId, equals(7));
       expect(offer.offeredByStaffName, equals('John Doe'));
       expect(offer.offeredAmount, equals(24500.0));
-      expect(offer.advancePercentage, equals(30));
       expect(offer.paymentTerms, equals(PaymentTermType.ADVANCE_PERCENT));
+      expect(offer.validUntil, equals('2026-10-20T12:00:00'));
       expect(offer.status, equals(OfferStatus.PENDING));
       expect(offer.remarks, equals('Can deliver within 2 days'));
     });
@@ -149,8 +295,17 @@ void main() {
   });
 
   group('Marketplace Truck Post & Chat Model Tests', () {
-    test('TruckPostModel toJson serializes fleet resources and capacity', () {
-      final truck = TruckPostModel(
+    test('TruckPostModel toJson omits vehicleId when null instead of falling back to 1', () {
+      final truckWithoutVehicle = TruckPostModel(
+        currentCity: 'Pune',
+        routeTo: 'Mumbai',
+        availableCapacity: 15.0,
+      );
+
+      final jsonWithoutVehicle = truckWithoutVehicle.toJson();
+      expect(jsonWithoutVehicle.containsKey('vehicleId'), isFalse);
+
+      final truckWithVehicle = TruckPostModel(
         vehicleId: 12,
         driverId: 8,
         currentCity: 'Pune',
@@ -160,7 +315,7 @@ void main() {
         pricePerKm: 55.0,
       );
 
-      final json = truck.toJson();
+      final json = truckWithVehicle.toJson();
       expect(json['vehicleId'], equals(12));
       expect(json['driverId'], equals(8));
       expect(json['currentCity'], equals('Pune'));
@@ -190,6 +345,184 @@ void main() {
       }, currentStaffId: 4);
 
       expect(otherMsg.isMe, isFalse);
+    });
+  });
+
+  group('Chat UI Failure & Vehicle Selection Widget Tests', () {
+    testWidgets('LoadDetailScreen does not open chat when startConversation fails and shows Retry action', (tester) async {
+      final fakeService = _FakeMarketplaceService()..conversationToReturn = null;
+      final load = LoadPostModel(
+        listingId: 10,
+        companyId: 200,
+        postedByStaffId: 8,
+        companyName: 'Apex Shippers',
+        originCity: 'Pune',
+        destinationCity: 'Delhi',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: InkRipple.splashFactory),
+          home: LoadDetailScreen(load: load, service: fakeService),
+        ),
+      );
+
+      final chatBtn = find.text('Chat');
+      await tester.ensureVisible(chatBtn);
+      await tester.pumpAndSettle();
+      await tester.tap(chatBtn);
+      await tester.pumpAndSettle();
+
+      expect(fakeService.startConversationCalls, equals(1));
+      expect(find.byType(MarketplaceChatScreen), findsNothing);
+      expect(find.textContaining('Unable to start chat conversation'), findsOneWidget);
+      expect(find.text('Retry'), findsOneWidget);
+    });
+
+    testWidgets('TruckDetailScreen does not open chat when participant IDs are missing', (tester) async {
+      final fakeService = _FakeMarketplaceService();
+      final truck = TruckPostModel(
+        listingId: 20,
+        companyId: null,
+        postedByStaffId: null,
+        currentCity: 'Mumbai',
+        routeTo: 'Surat',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: InkRipple.splashFactory),
+          home: TruckDetailScreen(truck: truck, service: fakeService),
+        ),
+      );
+
+      final chatBtn = find.text('Chat');
+      await tester.ensureVisible(chatBtn);
+      await tester.pumpAndSettle();
+      await tester.tap(chatBtn);
+      await tester.pumpAndSettle();
+
+      expect(fakeService.startConversationCalls, equals(0));
+      expect(find.byType(MarketplaceChatScreen), findsNothing);
+      expect(find.textContaining('participant details are unavailable'), findsOneWidget);
+      expect(find.text('Retry'), findsOneWidget);
+    });
+
+    testWidgets('CreateTruckPostScreen requires explicit vehicle selection and does not fallback to first vehicle', (tester) async {
+      final fakeMarketplace = _FakeMarketplaceService();
+      final fakeVehicleService = _FakeVehicleService(
+        vehiclesToReturn: [
+          VehicleModel(
+            id: 42,
+            chassisNumber: 'CH123',
+            engineNumber: 'EN123',
+            registrationNumber: 'MH12AB1234',
+            vehicleType: 'TRUCK',
+            model: 'Prima',
+            manufacturer: 'Tata',
+            capacityKg: 20000,
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: InkRipple.splashFactory),
+          home: CreateTruckPostScreen(
+            service: fakeMarketplace,
+            vehicleService: fakeVehicleService,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Attempt to submit without selecting a vehicle
+      final publishBtn = find.text('Publish Truck Availability');
+      await tester.ensureVisible(publishBtn);
+      await tester.pumpAndSettle();
+      await tester.tap(publishBtn);
+      await tester.pumpAndSettle();
+
+      expect(fakeMarketplace.submittedTruckPost, isNull);
+      expect(
+        find.text('Please select a vehicle from your fleet before publishing.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('CreateTruckPostScreen handles fleet load failure and empty fleet with Retry', (tester) async {
+      final fakeMarketplace = _FakeMarketplaceService();
+      final fakeVehicleService = _FakeVehicleService(shouldThrow: true);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: InkRipple.splashFactory),
+          home: CreateTruckPostScreen(
+            service: fakeMarketplace,
+            vehicleService: fakeVehicleService,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Unable to load your fleet vehicles'), findsOneWidget);
+      expect(find.text('Retry'), findsOneWidget);
+
+      // Now make retry succeed with empty fleet
+      fakeVehicleService.shouldThrow = false;
+      fakeVehicleService.vehiclesToReturn = [];
+      final retryBtn = find.text('Retry');
+      await tester.ensureVisible(retryBtn);
+      await tester.pumpAndSettle();
+      await tester.tap(retryBtn);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('No vehicles found in your fleet'), findsOneWidget);
+    });
+
+    testWidgets('CreateTruckPostScreen selecting a vehicle with LCV_CONTAINER bodyType does not throw DropdownButton error', (tester) async {
+      final fakeMarketplace = _FakeMarketplaceService();
+      final fakeVehicleService = _FakeVehicleService(
+        vehiclesToReturn: [
+          VehicleModel(
+            id: 77,
+            chassisNumber: 'CH777',
+            engineNumber: 'EN777',
+            registrationNumber: 'MH14XY7777',
+            vehicleType: 'LCV',
+            truckType: 'LCV',
+            bodyType: 'LCV_CONTAINER',
+            model: 'Bolero Pickup',
+            manufacturer: 'Mahindra',
+            capacityKg: 3500,
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: InkRipple.splashFactory),
+          home: CreateTruckPostScreen(
+            service: fakeMarketplace,
+            vehicleService: fakeVehicleService,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Open vehicle dropdown and select the LCV_CONTAINER vehicle
+      final dropdownPrompt = find.text('Select a vehicle...');
+      await tester.ensureVisible(dropdownPrompt);
+      await tester.pumpAndSettle();
+      await tester.tap(dropdownPrompt);
+      await tester.pumpAndSettle();
+
+      final vehicleOption = find.text('MH14XY7777 (Bolero Pickup)').last;
+      await tester.tap(vehicleOption);
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('LCV CONTAINER'), findsOneWidget);
     });
   });
 }

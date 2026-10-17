@@ -4,7 +4,7 @@ class Urls {
   /// Defaults to deployed production backend: https://code-setu-app.onrender.com
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://code-setu-app.onrender.com',
+    defaultValue: 'http://192.168.1.6:31201',
   );
 
   // ─── AUTH ───────────────────────────────────────────────

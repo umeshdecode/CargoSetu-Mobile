@@ -14,8 +14,9 @@ import 'marketplace_chat_screen.dart';
 /// without ever exposing internal database IDs.
 class LoadDetailScreen extends StatelessWidget {
   final LoadPostModel load;
+  final MarketplaceService? service;
 
-  const LoadDetailScreen({super.key, required this.load});
+  const LoadDetailScreen({super.key, required this.load, this.service});
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +90,7 @@ class LoadDetailScreen extends StatelessWidget {
                             ),
                             if (load.originAddress != null && load.originAddress!.isNotEmpty)
                               Text(
-                                '${load.originAddress!}${load.originState != null ? ", " + load.originState! : ""}',
+                                '${load.originAddress!}${load.originState != null ? ", ${load.originState!}" : ""}',
                                 style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
                               ),
                             const SizedBox(height: 18),
@@ -103,7 +104,7 @@ class LoadDetailScreen extends StatelessWidget {
                             ),
                             if (load.destinationAddress != null && load.destinationAddress!.isNotEmpty)
                               Text(
-                                '${load.destinationAddress!}${load.destinationState != null ? ", " + load.destinationState! : ""}',
+                                '${load.destinationAddress!}${load.destinationState != null ? ", ${load.destinationState!}" : ""}',
                                 style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
                               ),
                           ],
@@ -518,42 +519,63 @@ class LoadDetailScreen extends StatelessWidget {
     }
   }
 
+  void _showChatErrorWithRetry(BuildContext context, String message) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: const Color(0xFF991B1B),
+          action: SnackBarAction(
+            label: 'Retry',
+            textColor: Colors.white,
+            onPressed: () => _startChat(context),
+          ),
+        ),
+      );
+  }
+
   Future<void> _startChat(BuildContext context) async {
     if (load.companyId == null || load.postedByStaffId == null) {
-      Get.to(() => MarketplaceChatScreen(
-        title: load.companyName ?? 'Shipper Chat',
-      ));
+      _showChatErrorWithRetry(
+        context,
+        'Unable to start chat: shipper participant details are unavailable.',
+      );
       return;
     }
 
-    Get.dialog(
-      const Center(child: CircularProgressIndicator()),
-      barrierDismissible: false,
-    );
-
     try {
-      final service = MarketplaceService();
-      final conversation = await service.startConversation(
+      final chatService = service ?? MarketplaceService();
+      final conversation = await chatService.startConversation(
         listingId: load.listingId,
         participantCompanyId: load.companyId!,
         participantStaffId: load.postedByStaffId!,
         initialMessage: 'Hi, I am interested in your load ${load.listingNumber ?? ""}: ${load.originCity} to ${load.destinationCity}.',
       );
-      Get.back(); // close loader
 
-      if (conversation != null && conversation.id != null) {
-        Get.to(() => MarketplaceChatScreen(
-          conversationId: conversation.id,
-          title: load.companyName ?? 'Shipper Chat',
-        ));
+      if (!context.mounted) return;
+
+      if (conversation != null && conversation.id != null && conversation.id! > 0) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => MarketplaceChatScreen(
+              conversationId: conversation.id,
+              title: load.companyName ?? 'Shipper Chat',
+            ),
+          ),
+        );
       } else {
-        Get.to(() => MarketplaceChatScreen(
-          title: load.companyName ?? 'Shipper Chat',
-        ));
+        _showChatErrorWithRetry(
+          context,
+          'Unable to start chat conversation. Please try again.',
+        );
       }
     } catch (e) {
-      Get.back();
-      Get.snackbar('Error', 'Unable to initiate chat: $e');
+      _showChatErrorWithRetry(
+        context,
+        'Unable to initiate chat: $e',
+      );
     }
   }
 

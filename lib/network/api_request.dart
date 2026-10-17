@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:developer';
 
 import 'package:cargo_setu/routes/app_routes.dart';
@@ -38,10 +39,12 @@ class ApiRequest {
         case DioExceptionType.badResponse:
           final data = error.response?.data;
           if (data is Map) {
-            final msg = data['responseMessege'] ?? data['message'] ?? data['error'];
+            final msg = data['responseMessage'] ?? data['responseMessege'] ?? data['message'] ?? data['error'];
             if (msg != null && msg.toString().trim().isNotEmpty) {
-              return msg.toString();
+              return msg.toString().trim();
             }
+          } else if (data is String && data.trim().isNotEmpty) {
+            return data.trim();
           }
           final status = error.response?.statusCode;
           return status != null
@@ -56,9 +59,46 @@ class ApiRequest {
     return '$docTitle not generated. Please try again after some time.';
   }
 
+  static String? _extractBackendMessage(dynamic data) {
+    if (data is Map) {
+      final msg = data['responseMessage'] ??
+          data['responseMessege'] ??
+          data['message'] ??
+          data['error'];
+      if (msg != null && msg.toString().trim().isNotEmpty) {
+        return msg.toString().trim();
+      }
+    } else if (data is String && data.trim().isNotEmpty) {
+      final trimmed = data.trim();
+      if (trimmed.startsWith('{')) {
+        try {
+          final decoded = jsonDecode(trimmed);
+          if (decoded is Map) {
+            final msg = decoded['responseMessage'] ??
+                decoded['responseMessege'] ??
+                decoded['message'] ??
+                decoded['error'];
+            if (msg != null && msg.toString().trim().isNotEmpty) {
+              return msg.toString().trim();
+            }
+          }
+        } catch (_) {}
+      }
+      if (!trimmed.startsWith('<')) {
+        return trimmed;
+      }
+    }
+    return null;
+  }
+
   /// User-friendly error message formatter that prevents raw stacktraces from being shown to users.
   static String formatErrorMessage(dynamic error, {String defaultMessage = 'Something went wrong, please try again later.'}) {
     if (error is DioException) {
+      final extracted = _extractBackendMessage(error.response?.data);
+      if (extracted != null) {
+        return extracted;
+      }
+
       switch (error.type) {
         case DioExceptionType.connectionTimeout:
           return 'Connection timed out. Please check your internet connection.';
@@ -67,13 +107,6 @@ class ApiRequest {
         case DioExceptionType.receiveTimeout:
           return 'Server took longer than expected to respond. Please try again after some time.';
         case DioExceptionType.badResponse:
-          final data = error.response?.data;
-          if (data is Map) {
-            final msg = data['responseMessege'] ?? data['message'] ?? data['error'];
-            if (msg != null && msg.toString().trim().isNotEmpty) {
-              return msg.toString();
-            }
-          }
           final status = error.response?.statusCode;
           return status != null ? 'Server error ($status). Please try again.' : 'Invalid response from server.';
         case DioExceptionType.connectionError:
@@ -81,6 +114,22 @@ class ApiRequest {
         case DioExceptionType.cancel:
           return 'Request was cancelled.';
         default:
+          final innerError = error.error;
+          if (innerError is FormatException) {
+            if (innerError.source is String) {
+              final src = (innerError.source as String).trim();
+              if (src.isNotEmpty && !src.startsWith('<')) {
+                return src;
+              }
+            }
+            final lines = innerError.toString().split('\n');
+            if (lines.length >= 2) {
+              final candidate = lines[1].trim();
+              if (candidate.isNotEmpty && !candidate.startsWith('^') && !candidate.startsWith('<')) {
+                return candidate;
+              }
+            }
+          }
           final msg = error.message;
           if (msg != null &&
               msg.isNotEmpty &&
@@ -91,6 +140,12 @@ class ApiRequest {
             return msg;
           }
           return defaultMessage;
+      }
+    }
+    if (error is FormatException && error.source is String) {
+      final src = (error.source as String).trim();
+      if (src.isNotEmpty && !src.startsWith('<')) {
+        return src;
       }
     }
     if (error is String && error.isNotEmpty && !error.contains('Exception')) {
@@ -106,7 +161,7 @@ class ApiRequest {
         receiveTimeout: const Duration(seconds: 90),
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json",
+          "Accept": "application/json, text/plain, */*",
         },
       ),
     );
@@ -118,7 +173,7 @@ class ApiRequest {
         receiveTimeout: const Duration(seconds: 30),
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json",
+          "Accept": "application/json, text/plain, */*",
         },
       ),
     );
@@ -309,6 +364,7 @@ class ApiRequest {
     Map<String, dynamic>? queryParams,
     Map<String, dynamic>? headers,
     String? token,
+    ResponseType? responseType,
     Duration? receiveTimeout,
     Duration? sendTimeout,
   }) async {
@@ -319,6 +375,7 @@ class ApiRequest {
       options: _buildOptions(
         token: token,
         headers: headers,
+        responseType: responseType,
         receiveTimeout: receiveTimeout,
         sendTimeout: sendTimeout,
       ),

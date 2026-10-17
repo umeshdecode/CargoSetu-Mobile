@@ -118,7 +118,7 @@ class TruckPostModel {
   Map<String, dynamic> toJson() {
     return {
       if (id != null) 'id': id,
-      'vehicleId': vehicleId ?? 1,
+      if (vehicleId != null) 'vehicleId': vehicleId,
       if (driverId != null) 'driverId': driverId,
       'currentCity': currentCity,
       if (currentState != null) 'currentState': currentState,

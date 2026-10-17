@@ -98,7 +98,15 @@ class LoginController extends GetxController {
       debugPrint("LOGIN REQUEST => ${jsonEncode(request.toJson())}");
 
       final response = await _provider.login(request);
-      final loginRes = LoginResponse.fromJson(response.data);
+      final dataMap = _extractLoginPayload(
+        response.data,
+        fallbackMessage: "Invalid email or password",
+      );
+      if (dataMap == null) {
+        return;
+      }
+
+      final loginRes = LoginResponse.fromJson(dataMap);
 
       /// SAVE FULL SESSION (token + roles + permissions)
       await _saveSessionAndCheckCompany(loginRes);
@@ -106,10 +114,52 @@ class LoginController extends GetxController {
       final msg = ApiRequest.formatErrorMessage(e, defaultMessage: "Login Failed, Try after Some time");
       AppSnackbar.error(msg);
     } catch (e) {
-      AppSnackbar.error(e.toString());
+      final msg = ApiRequest.formatErrorMessage(e, defaultMessage: "Login Failed, Try after Some time");
+      AppSnackbar.error(msg);
     } finally {
       isLoading.value = false;
     }
+  }
+
+  Map<String, dynamic>? _extractLoginPayload(
+    dynamic rawData, {
+    required String fallbackMessage,
+  }) {
+    dynamic data = rawData;
+    if (data is String) {
+      final trimmed = data.trim();
+      if (trimmed.startsWith('{')) {
+        try {
+          data = jsonDecode(trimmed);
+        } catch (_) {
+          AppSnackbar.error(trimmed.isNotEmpty ? trimmed : fallbackMessage);
+          return null;
+        }
+      } else {
+        AppSnackbar.error(trimmed.isNotEmpty ? trimmed : fallbackMessage);
+        return null;
+      }
+    }
+
+    if (data is Map) {
+      final map = Map<String, dynamic>.from(data);
+      final token = (map['accessToken'] ?? '').toString().trim();
+      if (token.isNotEmpty) {
+        return map;
+      }
+      final errMsg = (map['responseMessage'] ??
+              map['responseMessege'] ??
+              map['message'] ??
+              map['error'] ??
+              fallbackMessage)
+          .toString()
+          .trim();
+      AppSnackbar.error(errMsg.isNotEmpty ? errMsg : fallbackMessage);
+      return null;
+    }
+
+    AppSnackbar.error(fallbackMessage);
+    return null;
   }
 
   ////////////////////////
@@ -127,7 +177,7 @@ class LoginController extends GetxController {
       if (response.statusCode == 200) {
         otpSent.value = true;
         // The backend might return mockOtp in response for testing
-        final mockOtp = response.data['mockOtp'];
+        final mockOtp = response.data is Map ? response.data['mockOtp'] : null;
         if (mockOtp != null) {
           AppSnackbar.info("Your mock OTP is: $mockOtp", title: "OTP Sent");
         } else {
@@ -156,7 +206,14 @@ class LoginController extends GetxController {
         fullMobileNumber,
         otpController.text,
       );
-      final loginRes = LoginResponse.fromJson(response.data);
+      final dataMap = _extractLoginPayload(
+        response.data,
+        fallbackMessage: "Invalid or expired OTP",
+      );
+      if (dataMap == null) {
+        return;
+      }
+      final loginRes = LoginResponse.fromJson(dataMap);
 
       /// SAVE FULL SESSION (token + roles + permissions)
       await _saveSessionAndCheckCompany(loginRes);
@@ -164,7 +221,8 @@ class LoginController extends GetxController {
       final msg = ApiRequest.formatErrorMessage(e, defaultMessage: "Invalid or expired OTP");
       AppSnackbar.error(msg);
     } catch (e) {
-      AppSnackbar.error(e.toString());
+      final msg = ApiRequest.formatErrorMessage(e, defaultMessage: "Invalid or expired OTP");
+      AppSnackbar.error(msg);
     } finally {
       isLoading.value = false;
     }

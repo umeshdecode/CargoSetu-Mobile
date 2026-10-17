@@ -72,7 +72,16 @@ class SignUpController extends GetxController {
         log("AUTO-LOGIN REQUEST => ${jsonEncode(loginRequest.toJson())}");
 
         final loginResponse = await _loginProvider.login(loginRequest);
-        final loginRes = LoginResponse.fromJson(loginResponse.data);
+        final rawLoginData = loginResponse.data;
+        final Map<String, dynamic>? loginMap = rawLoginData is Map
+            ? Map<String, dynamic>.from(rawLoginData)
+            : (rawLoginData is String && rawLoginData.trim().startsWith('{')
+                ? Map<String, dynamic>.from(jsonDecode(rawLoginData.trim()) as Map)
+                : null);
+        if (loginMap == null || (loginMap['accessToken'] ?? '').toString().trim().isEmpty) {
+          throw Exception(rawLoginData?.toString() ?? 'Auto-login failed');
+        }
+        final loginRes = LoginResponse.fromJson(loginMap);
 
         // Save session
         final session = Get.find<SessionService>();
@@ -99,11 +108,16 @@ class SignUpController extends GetxController {
       log("Status: ${e.response?.statusCode}");
       log("Data: ${e.response?.data}");
 
-      AppSnackbar.error(
-        e.response?.data?['message'] ??
-            e.response?.data?.toString() ??
-            "Server error",
-      );
+      final errData = e.response?.data;
+      final errMsg = errData is Map
+          ? (errData['responseMessage'] ??
+              errData['responseMessege'] ??
+              errData['message'] ??
+              errData['error'] ??
+              "Server error")
+          : (errData?.toString() ?? "Server error");
+
+      AppSnackbar.error(errMsg.toString());
 
       return false;
     } catch (e) {

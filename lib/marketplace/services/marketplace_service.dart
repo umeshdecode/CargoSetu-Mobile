@@ -9,9 +9,13 @@ import '../models/marketplace_trip_model.dart';
 import '../models/marketplace_payment_model.dart';
 import '../models/marketplace_chat_model.dart';
 import '../models/dispute_rating_model.dart';
+import '../models/marketplace_enums.dart';
 
 class MarketplaceService {
-  final ApiRequest _api = ApiRequest();
+  final ApiRequest? _injectedApi;
+  late final ApiRequest _api = _injectedApi ?? ApiRequest();
+
+  MarketplaceService({ApiRequest? api}) : _injectedApi = api;
 
   // ─── LOADS ──────────────────────────────────────────────────
 
@@ -232,12 +236,14 @@ class MarketplaceService {
   }
 
   Future<bool> submitOffer(MarketplaceOfferModel offer) async {
+    final listingId = offer.listingId;
+    if (listingId == null || listingId <= 0) {
+      log('❌ submitOffer error: valid listingId is required');
+      return false;
+    }
     try {
-      final url = offer.listingId != null
-          ? Urls.marketplaceOffersForListing(offer.listingId!)
-          : Urls.marketplaceOffers;
       final response = await _api.post(
-        url: url,
+        url: Urls.marketplaceOffersForListing(listingId),
         data: offer.toJson(),
       );
       return response.statusCode == 200 || response.statusCode == 201;
@@ -267,16 +273,22 @@ class MarketplaceService {
     }
   }
 
-  Future<bool> counterOffer(int offerId, double counterAmount, {String? remarks}) async {
+  Future<bool> counterOffer(
+    int offerId,
+    double counterAmount, {
+    PaymentTermType? paymentTerms,
+    String? remarks,
+  }) async {
     try {
       final response = await _api.post(
         url: Urls.marketplaceOfferCounter(offerId),
         data: {
-          'offeredAmount': counterAmount,
-          if (remarks != null) 'remarks': remarks,
+          'amount': counterAmount,
+          if (paymentTerms != null) 'paymentTerms': paymentTerms.name,
+          'message': ?remarks,
         },
       );
-      return response.statusCode == 200;
+      return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
       log('❌ counterOffer error: $e');
       return false;
@@ -441,7 +453,7 @@ class MarketplaceService {
         data: {
           'lat': lat,
           'lng': lng,
-          if (source != null) 'source': source,
+          'source': ?source,
         },
       );
       return response.statusCode == 200;
@@ -523,8 +535,8 @@ class MarketplaceService {
       final response = await _api.post(
         url: Urls.marketplaceConversations,
         data: {
-          if (listingId != null) 'listingId': listingId,
-          if (bookingId != null) 'bookingId': bookingId,
+          'listingId': ?listingId,
+          'bookingId': ?bookingId,
           'participantCompanyId': participantCompanyId,
           'participantStaffId': participantStaffId,
           if (initialMessage != null && initialMessage.trim().isNotEmpty)

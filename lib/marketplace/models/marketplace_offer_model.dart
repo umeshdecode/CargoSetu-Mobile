@@ -12,6 +12,7 @@ class MarketplaceOfferModel {
   final int? advancePercentage;
   final PaymentTermType? paymentTerms;
   final String? availableFrom;
+  final String? validUntil;
   final String? remarks;
   final OfferStatus status;
   final int? parentOfferId;
@@ -29,6 +30,7 @@ class MarketplaceOfferModel {
     this.advancePercentage,
     this.paymentTerms,
     this.availableFrom,
+    this.validUntil,
     this.remarks,
     this.status = OfferStatus.PENDING,
     this.parentOfferId,
@@ -43,14 +45,15 @@ class MarketplaceOfferModel {
       bidderCompanyId: json['bidderCompanyId'] as int?,
       bidderCompanyName: json['bidderCompanyName']?.toString(),
       offeredByStaffId: json['offeredByStaffId'] as int?,
-      offeredByStaffName: json['offeredByStaffName']?.toString(),
-      offeredAmount: (json['offeredAmount'] as num?)?.toDouble() ?? 0.0,
+      offeredByStaffName: (json['offeredByName'] ?? json['offeredByStaffName'])?.toString(),
+      offeredAmount: ((json['amount'] ?? json['offeredAmount']) as num?)?.toDouble() ?? 0.0,
       advancePercentage: json['advancePercentage'] as int?,
       paymentTerms: json['paymentTerms'] != null
           ? PaymentTermType.fromString(json['paymentTerms'].toString())
           : null,
       availableFrom: json['availableFrom']?.toString(),
-      remarks: json['remarks']?.toString(),
+      validUntil: json['validUntil']?.toString(),
+      remarks: (json['message'] ?? json['remarks'])?.toString(),
       status: OfferStatus.fromString(json['status']?.toString()),
       parentOfferId: json['parentOfferId'] as int?,
       createdAt: json['createdAt']?.toString(),
@@ -59,17 +62,10 @@ class MarketplaceOfferModel {
 
   Map<String, dynamic> toJson() {
     return {
-      if (id != null) 'id': id,
-      if (listingId != null) 'listingId': listingId,
       'amount': offeredAmount,
-      'offeredAmount': offeredAmount,
-      if (advancePercentage != null) 'advancePercentage': advancePercentage,
       if (paymentTerms != null) 'paymentTerms': paymentTerms!.name,
-      if (availableFrom != null) 'availableFrom': availableFrom,
+      if (validUntil != null) 'validUntil': validUntil,
       if (remarks != null) 'message': remarks,
-      if (remarks != null) 'remarks': remarks,
-      'status': status.name,
-      if (parentOfferId != null) 'parentOfferId': parentOfferId,
     };
   }
 }

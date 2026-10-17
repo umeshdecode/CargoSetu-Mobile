@@ -13,8 +13,9 @@ import '../services/marketplace_service.dart';
 /// without revealing internal entity IDs.
 class TruckDetailScreen extends StatelessWidget {
   final TruckPostModel truck;
+  final MarketplaceService? service;
 
-  const TruckDetailScreen({super.key, required this.truck});
+  const TruckDetailScreen({super.key, required this.truck, this.service});
 
   @override
   Widget build(BuildContext context) {
@@ -485,42 +486,63 @@ class TruckDetailScreen extends StatelessWidget {
     );
   }
 
+  void _showChatErrorWithRetry(BuildContext context, String message) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: const Color(0xFF991B1B),
+          action: SnackBarAction(
+            label: 'Retry',
+            textColor: Colors.white,
+            onPressed: () => _startChat(context),
+          ),
+        ),
+      );
+  }
+
   Future<void> _startChat(BuildContext context) async {
     if (truck.companyId == null || truck.postedByStaffId == null) {
-      Get.to(() => MarketplaceChatScreen(
-        title: truck.companyName ?? 'Transporter Chat',
-      ));
+      _showChatErrorWithRetry(
+        context,
+        'Unable to start chat: transporter participant details are unavailable.',
+      );
       return;
     }
 
-    Get.dialog(
-      const Center(child: CircularProgressIndicator()),
-      barrierDismissible: false,
-    );
-
     try {
-      final service = MarketplaceService();
-      final conversation = await service.startConversation(
+      final chatService = service ?? MarketplaceService();
+      final conversation = await chatService.startConversation(
         listingId: truck.listingId,
         participantCompanyId: truck.companyId!,
         participantStaffId: truck.postedByStaffId!,
         initialMessage: 'Hi, I am inquiring about your truck ${truck.vehicleNumber ?? ""}: stationed at ${truck.currentCity}.',
       );
-      Get.back(); // close loader
 
-      if (conversation != null && conversation.id != null) {
-        Get.to(() => MarketplaceChatScreen(
-          conversationId: conversation.id,
-          title: truck.companyName ?? 'Transporter Chat',
-        ));
+      if (!context.mounted) return;
+
+      if (conversation != null && conversation.id != null && conversation.id! > 0) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => MarketplaceChatScreen(
+              conversationId: conversation.id,
+              title: truck.companyName ?? 'Transporter Chat',
+            ),
+          ),
+        );
       } else {
-        Get.to(() => MarketplaceChatScreen(
-          title: truck.companyName ?? 'Transporter Chat',
-        ));
+        _showChatErrorWithRetry(
+          context,
+          'Unable to start chat conversation. Please try again.',
+        );
       }
     } catch (e) {
-      Get.back();
-      Get.snackbar('Error', 'Unable to initiate chat: $e');
+      _showChatErrorWithRetry(
+        context,
+        'Unable to initiate chat: $e',
+      );
     }
   }
 
