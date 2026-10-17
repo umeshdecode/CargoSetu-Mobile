@@ -1,3 +1,4 @@
+import 'package:cargo_setu/services/location_service.dart';
 import 'package:cargo_setu/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -5,12 +6,15 @@ import 'package:intl/intl.dart';
 import '../models/load_post_model.dart';
 import '../models/marketplace_enums.dart';
 import '../services/marketplace_service.dart';
+import '../widgets/city_autocomplete_field.dart';
 
 /// Clean multi-step form to post freight load demand.
 /// Designed for easy data entry by shippers with clear visual sections,
 /// validation, and zero internal database ID exposure.
 class CreateLoadPostScreen extends StatefulWidget {
-  const CreateLoadPostScreen({super.key});
+  final MarketplaceService? service;
+
+  const CreateLoadPostScreen({super.key, this.service});
 
   @override
   State<CreateLoadPostScreen> createState() => _CreateLoadPostScreenState();
@@ -18,13 +22,21 @@ class CreateLoadPostScreen extends StatefulWidget {
 
 class _CreateLoadPostScreenState extends State<CreateLoadPostScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _service = MarketplaceService();
+  late final MarketplaceService _service =
+      widget.service ?? MarketplaceService();
 
-  // Route Controllers
+  // Route Controllers & Coordinates
   final _originCityCtrl = TextEditingController();
+  final _originStateCtrl = TextEditingController();
   final _originAddressCtrl = TextEditingController();
+  double? _originLat;
+  double? _originLng;
+
   final _destCityCtrl = TextEditingController();
+  final _destStateCtrl = TextEditingController();
   final _destAddressCtrl = TextEditingController();
+  double? _destLat;
+  double? _destLng;
 
   // Dates
   DateTime? _pickupDate = DateTime.now().add(const Duration(days: 1));
@@ -51,11 +63,22 @@ class _CreateLoadPostScreenState extends State<CreateLoadPostScreen> {
 
   bool _isSubmitting = false;
 
+  double? get _estimatedDistanceKm => LocationService.estimateCityDistanceKm(
+    originLat: _originLat,
+    originLng: _originLng,
+    originCity: _originCityCtrl.text,
+    destLat: _destLat,
+    destLng: _destLng,
+    destCity: _destCityCtrl.text,
+  );
+
   @override
   void dispose() {
     _originCityCtrl.dispose();
+    _originStateCtrl.dispose();
     _originAddressCtrl.dispose();
     _destCityCtrl.dispose();
+    _destStateCtrl.dispose();
     _destAddressCtrl.dispose();
     _weightCtrl.dispose();
     _volumeCtrl.dispose();
@@ -68,6 +91,8 @@ class _CreateLoadPostScreenState extends State<CreateLoadPostScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final distKm = _estimatedDistanceKm;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
@@ -103,12 +128,46 @@ class _CreateLoadPostScreenState extends State<CreateLoadPostScreen> {
                 title: '1. Route & Schedule',
                 icon: Icons.navigation_outlined,
                 children: [
-                  _textInput(
-                    controller: _originCityCtrl,
-                    label: 'Origin City (Pickup) *',
-                    hint: 'e.g. Mumbai, Pune',
-                    prefixIcon: const Icon(Icons.circle, size: 10, color: Color(0xFF10B981)),
-                    validator: (v) => v?.trim().isEmpty == true ? 'Origin city is required' : null,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: CityAutocompleteField(
+                          controller: _originCityCtrl,
+                          label: 'Origin City (Pickup) *',
+                          hint: 'e.g. Mumbai, Pune',
+                          prefixIcon: const Icon(
+                            Icons.circle,
+                            size: 10,
+                            color: Color(0xFF10B981),
+                          ),
+                          validator: (v) => v?.trim().isEmpty == true
+                              ? 'Origin city is required'
+                              : null,
+                          onLocationSelected: (loc) {
+                            setState(() {
+                              _originStateCtrl.text = loc.state;
+                              _originLat = loc.latitude;
+                              _originLng = loc.longitude;
+                            });
+                          },
+                          onChanged: (_) => setState(() {
+                            _originLat = null;
+                            _originLng = null;
+                          }),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        flex: 2,
+                        child: _textInput(
+                          controller: _originStateCtrl,
+                          label: 'Origin State',
+                          hint: 'State',
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   _textInput(
@@ -117,13 +176,84 @@ class _CreateLoadPostScreenState extends State<CreateLoadPostScreen> {
                     hint: 'e.g. MIDC Industrial Area Phase 2',
                   ),
                   const SizedBox(height: 14),
-                  _textInput(
-                    controller: _destCityCtrl,
-                    label: 'Destination City (Delivery) *',
-                    hint: 'e.g. Delhi, Ahmedabad',
-                    prefixIcon: const Icon(Icons.location_on, size: 12, color: Color(0xFFEF4444)),
-                    validator: (v) => v?.trim().isEmpty == true ? 'Destination city is required' : null,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: CityAutocompleteField(
+                          controller: _destCityCtrl,
+                          label: 'Destination City (Delivery) *',
+                          hint: 'e.g. Delhi, Ahmedabad',
+                          prefixIcon: const Icon(
+                            Icons.location_on,
+                            size: 12,
+                            color: Color(0xFFEF4444),
+                          ),
+                          validator: (v) => v?.trim().isEmpty == true
+                              ? 'Destination city is required'
+                              : null,
+                          onLocationSelected: (loc) {
+                            setState(() {
+                              _destStateCtrl.text = loc.state;
+                              _destLat = loc.latitude;
+                              _destLng = loc.longitude;
+                            });
+                          },
+                          onChanged: (_) => setState(() {
+                            _destLat = null;
+                            _destLng = null;
+                          }),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        flex: 2,
+                        child: _textInput(
+                          controller: _destStateCtrl,
+                          label: 'Dest. State',
+                          hint: 'State',
+                        ),
+                      ),
+                    ],
                   ),
+                  if (_originCityCtrl.text.trim().isNotEmpty &&
+                      _destCityCtrl.text.trim().isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.route_outlined,
+                            size: 18,
+                            color: AppColors.primaryBlue,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              distKm != null
+                                  ? 'Route Distance: ${LocationService.formatDistanceKm(distKm, includeMethodLabel: true)}'
+                                  : 'Route distance unavailable for selected cities',
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF1E40AF),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   _textInput(
                     controller: _destAddressCtrl,
@@ -164,7 +294,10 @@ class _CreateLoadPostScreenState extends State<CreateLoadPostScreen> {
                     label: 'Cargo Category *',
                     value: _cargoType,
                     items: CargoType.values.map((c) {
-                      return DropdownMenuItem(value: c, child: Text(c.displayName));
+                      return DropdownMenuItem(
+                        value: c,
+                        child: Text(c.displayName),
+                      );
                     }).toList(),
                     onChanged: (val) {
                       if (val != null) setState(() => _cargoType = val);
@@ -180,7 +313,8 @@ class _CreateLoadPostScreenState extends State<CreateLoadPostScreen> {
                           label: 'Weight *',
                           hint: 'e.g. 15.5',
                           keyboardType: TextInputType.number,
-                          validator: (v) => v?.trim().isEmpty == true ? 'Required' : null,
+                          validator: (v) =>
+                              v?.trim().isEmpty == true ? 'Required' : null,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -190,7 +324,10 @@ class _CreateLoadPostScreenState extends State<CreateLoadPostScreen> {
                           label: 'Unit',
                           value: _weightUnit,
                           items: CapacityUnit.values.map((u) {
-                            return DropdownMenuItem(value: u, child: Text(u.name));
+                            return DropdownMenuItem(
+                              value: u,
+                              child: Text(u.name),
+                            );
                           }).toList(),
                           onChanged: (val) {
                             if (val != null) setState(() => _weightUnit = val);
@@ -241,9 +378,18 @@ class _CreateLoadPostScreenState extends State<CreateLoadPostScreen> {
                   _dropdownInput<String>(
                     label: 'Body Type',
                     value: _bodyType,
-                    items: ['Open Body', 'Container / Closed', 'Flatbed', 'Trailer', 'Refrigerated']
-                        .map((b) => DropdownMenuItem(value: b, child: Text(b)))
-                        .toList(),
+                    items:
+                        [
+                              'Open Body',
+                              'Container / Closed',
+                              'Flatbed',
+                              'Trailer',
+                              'Refrigerated',
+                            ]
+                            .map(
+                              (b) => DropdownMenuItem(value: b, child: Text(b)),
+                            )
+                            .toList(),
                     onChanged: (val) {
                       if (val != null) setState(() => _bodyType = val);
                     },
@@ -255,9 +401,21 @@ class _CreateLoadPostScreenState extends State<CreateLoadPostScreen> {
                         child: _dropdownInput<String>(
                           label: 'Truck Category',
                           value: _truckType,
-                          items: ['Any Standard Truck', '32 Ft Multi-Axle', '24 Ft Open', '19 Ft Container', 'Tata 407 / Pickup']
-                              .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                              .toList(),
+                          items:
+                              [
+                                    'Any Standard Truck',
+                                    '32 Ft Multi-Axle',
+                                    '24 Ft Open',
+                                    '19 Ft Container',
+                                    'Tata 407 / Pickup',
+                                  ]
+                                  .map(
+                                    (t) => DropdownMenuItem(
+                                      value: t,
+                                      child: Text(t),
+                                    ),
+                                  )
+                                  .toList(),
                           onChanged: (val) {
                             if (val != null) setState(() => _truckType = val);
                           },
@@ -295,7 +453,13 @@ class _CreateLoadPostScreenState extends State<CreateLoadPostScreen> {
                           keyboardType: TextInputType.number,
                           prefixIcon: const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 12),
-                            child: Text('₹', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                            child: Text(
+                              '₹',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -306,8 +470,14 @@ class _CreateLoadPostScreenState extends State<CreateLoadPostScreen> {
                           label: 'Rate Type',
                           value: _priceType,
                           items: const [
-                            DropdownMenuItem(value: 'FIXED', child: Text('Fixed Rate')),
-                            DropdownMenuItem(value: 'PER_TON', child: Text('Per Ton')),
+                            DropdownMenuItem(
+                              value: 'FIXED',
+                              child: Text('Fixed Rate'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'PER_TON',
+                              child: Text('Per Ton'),
+                            ),
                           ],
                           onChanged: (val) {
                             if (val != null) setState(() => _priceType = val);
@@ -321,7 +491,10 @@ class _CreateLoadPostScreenState extends State<CreateLoadPostScreen> {
                     label: 'Payment Terms',
                     value: _paymentTerms,
                     items: PaymentTermType.values.map((t) {
-                      return DropdownMenuItem(value: t, child: Text(t.displayName));
+                      return DropdownMenuItem(
+                        value: t,
+                        child: Text(t.displayName),
+                      );
                     }).toList(),
                     onChanged: (val) {
                       if (val != null) setState(() => _paymentTerms = val);
@@ -331,7 +504,11 @@ class _CreateLoadPostScreenState extends State<CreateLoadPostScreen> {
                     const SizedBox(height: 14),
                     const Text(
                       'Advance Percentage',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF64748B),
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Row(
@@ -342,11 +519,16 @@ class _CreateLoadPostScreenState extends State<CreateLoadPostScreen> {
                           child: ChoiceChip(
                             label: Text('$pct%'),
                             selected: isSel,
-                            onSelected: (_) => setState(() => _advancePct = pct),
+                            onSelected: (_) =>
+                                setState(() => _advancePct = pct),
                             selectedColor: AppColors.primaryBlueLight,
                             labelStyle: TextStyle(
-                              color: isSel ? AppColors.primaryBlue : const Color(0xFF475569),
-                              fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
+                              color: isSel
+                                  ? AppColors.primaryBlue
+                                  : const Color(0xFF475569),
+                              fontWeight: isSel
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
                               fontSize: 12,
                             ),
                           ),
@@ -377,11 +559,17 @@ class _CreateLoadPostScreenState extends State<CreateLoadPostScreen> {
                       ? const SizedBox(
                           width: 24,
                           height: 24,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
                         )
                       : const Text(
                           'Publish Load on Marketplace',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                 ),
               ),
@@ -413,15 +601,38 @@ class _CreateLoadPostScreenState extends State<CreateLoadPostScreen> {
         ? DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(_deliveryDate!)
         : null;
 
+    final resolvedOriginCoords = (_originLat != null && _originLng != null)
+        ? (_originLat!, _originLng!)
+        : LocationService.resolveCityCoordinates(_originCityCtrl.text);
+    final resolvedDestCoords = (_destLat != null && _destLng != null)
+        ? (_destLat!, _destLng!)
+        : LocationService.resolveCityCoordinates(_destCityCtrl.text);
+
     final model = LoadPostModel(
       originCity: _originCityCtrl.text.trim(),
-      originAddress: _originAddressCtrl.text.trim().isEmpty ? null : _originAddressCtrl.text.trim(),
+      originState: _originStateCtrl.text.trim().isEmpty
+          ? null
+          : _originStateCtrl.text.trim(),
+      originLat: resolvedOriginCoords?.$1,
+      originLng: resolvedOriginCoords?.$2,
+      originAddress: _originAddressCtrl.text.trim().isEmpty
+          ? null
+          : _originAddressCtrl.text.trim(),
       destinationCity: _destCityCtrl.text.trim(),
-      destinationAddress: _destAddressCtrl.text.trim().isEmpty ? null : _destAddressCtrl.text.trim(),
+      destinationState: _destStateCtrl.text.trim().isEmpty
+          ? null
+          : _destStateCtrl.text.trim(),
+      destinationLat: resolvedDestCoords?.$1,
+      destinationLng: resolvedDestCoords?.$2,
+      destinationAddress: _destAddressCtrl.text.trim().isEmpty
+          ? null
+          : _destAddressCtrl.text.trim(),
       pickupFrom: pickupStr,
       deliveryTo: deliveryStr,
       cargoType: _cargoType,
-      cargoDescription: _descriptionCtrl.text.trim().isEmpty ? null : _descriptionCtrl.text.trim(),
+      cargoDescription: _descriptionCtrl.text.trim().isEmpty
+          ? null
+          : _descriptionCtrl.text.trim(),
       weight: double.tryParse(_weightCtrl.text.trim()) ?? 1.0,
       weightUnit: _weightUnit,
       volume: double.tryParse(_volumeCtrl.text.trim()),
@@ -433,6 +644,7 @@ class _CreateLoadPostScreenState extends State<CreateLoadPostScreen> {
       priceType: _priceType,
       paymentTerms: _paymentTerms,
       advancePercentage: _advancePct,
+      routeDistanceKm: _estimatedDistanceKm,
     );
 
     final success = await _service.createLoadPost(model);
@@ -527,7 +739,11 @@ class _CreateLoadPostScreenState extends State<CreateLoadPostScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+          style: const TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF475569),
+          ),
         ),
         const SizedBox(height: 6),
         TextFormField(
@@ -541,8 +757,14 @@ class _CreateLoadPostScreenState extends State<CreateLoadPostScreen> {
             prefixIcon: prefixIcon,
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
           ),
         ),
       ],
@@ -560,7 +782,11 @@ class _CreateLoadPostScreenState extends State<CreateLoadPostScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+          style: const TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF475569),
+          ),
         ),
         const SizedBox(height: 6),
         Container(
@@ -593,7 +819,11 @@ class _CreateLoadPostScreenState extends State<CreateLoadPostScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+          style: const TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF475569),
+          ),
         ),
         const SizedBox(height: 6),
         InkWell(
@@ -608,14 +838,22 @@ class _CreateLoadPostScreenState extends State<CreateLoadPostScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.calendar_today, size: 14, color: Color(0xFF64748B)),
+                const Icon(
+                  Icons.calendar_today,
+                  size: 14,
+                  color: Color(0xFF64748B),
+                ),
                 const SizedBox(width: 8),
                 Text(
-                  selectedDate != null ? DateFormat('dd MMM yyyy').format(selectedDate) : 'Select date',
+                  selectedDate != null
+                      ? DateFormat('dd MMM yyyy').format(selectedDate)
+                      : 'Select date',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: selectedDate != null ? const Color(0xFF0F172A) : const Color(0xFF94A3B8),
+                    color: selectedDate != null
+                        ? const Color(0xFF0F172A)
+                        : const Color(0xFF94A3B8),
                   ),
                 ),
               ],

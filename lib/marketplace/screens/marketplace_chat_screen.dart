@@ -1,3 +1,4 @@
+import 'package:cargo_setu/services/session_service.dart';
 import 'package:cargo_setu/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -10,11 +11,17 @@ import '../services/marketplace_service.dart';
 class MarketplaceChatScreen extends StatefulWidget {
   final int? conversationId;
   final String title;
+  final MarketplaceService? service;
+  final List<ChatMessageModel>? initialMessages;
+  final String? currentUserName;
 
   const MarketplaceChatScreen({
     super.key,
     this.conversationId,
     this.title = 'Marketplace Communication',
+    this.service,
+    this.initialMessages,
+    this.currentUserName,
   });
 
   @override
@@ -22,7 +29,7 @@ class MarketplaceChatScreen extends StatefulWidget {
 }
 
 class _MarketplaceChatScreenState extends State<MarketplaceChatScreen> {
-  final _service = MarketplaceService();
+  late final MarketplaceService _service;
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
 
@@ -31,11 +38,29 @@ class _MarketplaceChatScreenState extends State<MarketplaceChatScreen> {
   List<ChatConversationModel> _conversations = [];
   int? _activeConversationId;
 
+  String? get _currentStaffName {
+    if (widget.currentUserName != null &&
+        widget.currentUserName!.trim().isNotEmpty) {
+      return widget.currentUserName!.trim();
+    }
+    if (Get.isRegistered<SessionService>()) {
+      final name = Get.find<SessionService>().currentUserName.value.trim();
+      if (name.isNotEmpty) return name;
+    }
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
+    _service = widget.service ?? MarketplaceService();
     _activeConversationId = widget.conversationId;
-    _initChat();
+    if (widget.initialMessages != null) {
+      _messages = List<ChatMessageModel>.from(widget.initialMessages!);
+      _isLoading = false;
+    } else {
+      _initChat();
+    }
   }
 
   @override
@@ -63,7 +88,12 @@ class _MarketplaceChatScreenState extends State<MarketplaceChatScreen> {
   }
 
   Future<void> _loadMessages(int convoId) async {
-    final msgs = await _service.getMessages(convoId);
+    int? staffId;
+    if (Get.isRegistered<SessionService>()) {
+      final id = Get.find<SessionService>().currentStaffId.value;
+      if (id > 0) staffId = id;
+    }
+    final msgs = await _service.getMessages(convoId, currentStaffId: staffId);
     if (mounted) {
       setState(() => _messages = msgs);
       _scrollToBottom();
@@ -107,7 +137,8 @@ class _MarketplaceChatScreenState extends State<MarketplaceChatScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF0F172A)),
           onPressed: () {
-            if (_activeConversationId != null && widget.conversationId == null) {
+            if (_activeConversationId != null &&
+                widget.conversationId == null) {
               setState(() => _activeConversationId = null);
               _loadConversations();
             } else {
@@ -131,8 +162,8 @@ class _MarketplaceChatScreenState extends State<MarketplaceChatScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : isConversationView
-              ? _buildMessageThread()
-              : _buildConversationList(),
+          ? _buildMessageThread()
+          : _buildConversationList(),
     );
   }
 
@@ -190,7 +221,10 @@ class _MarketplaceChatScreenState extends State<MarketplaceChatScreen> {
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
           child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 6,
+            ),
             leading: const CircleAvatar(
               backgroundColor: Color(0xFFEFF6FF),
               child: Icon(Icons.business, color: Color(0xFF2563EB), size: 20),
@@ -205,8 +239,13 @@ class _MarketplaceChatScreenState extends State<MarketplaceChatScreen> {
             ),
             subtitle: convo.lastMessageAt != null
                 ? Text(
-                    DateFormat('dd MMM, hh:mm a').format(DateTime.tryParse(convo.lastMessageAt!) ?? DateTime.now()),
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                    DateFormat('dd MMM, hh:mm a').format(
+                      DateTime.tryParse(convo.lastMessageAt!) ?? DateTime.now(),
+                    ),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF64748B),
+                    ),
                   )
                 : null,
             trailing: const Icon(Icons.chevron_right, color: Color(0xFF94A3B8)),
@@ -237,7 +276,7 @@ class _MarketplaceChatScreenState extends State<MarketplaceChatScreen> {
                   controller: _scrollController,
                   padding: const EdgeInsets.all(16),
                   itemCount: _messages.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     final msg = _messages[index];
                     return _buildMessageBubble(msg);
@@ -251,51 +290,81 @@ class _MarketplaceChatScreenState extends State<MarketplaceChatScreen> {
 
   Widget _buildMessageBubble(ChatMessageModel msg) {
     final isMe = msg.isMe;
+    final senderHeader = msg.senderDisplayHeader(
+      currentUserName: _currentStaffName,
+    );
 
     return Align(
+      key: ValueKey(
+        'chat_bubble_${msg.id ?? msg.hashCode}_${isMe ? "me" : "other"}',
+      ),
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: isMe ? AppColors.primary : Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(12),
-            topRight: const Radius.circular(12),
-            bottomLeft: Radius.circular(isMe ? 12 : 2),
-            bottomRight: Radius.circular(isMe ? 2 : 12),
-          ),
-          border: isMe ? null : Border.all(color: const Color(0xFFE2E8F0)),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x05000000),
-              offset: Offset(0, 1),
-              blurRadius: 3,
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
-            Text(
-              msg.message,
+      child: Column(
+        crossAxisAlignment: isMe
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 3, left: 4, right: 4),
+            child: Text(
+              senderHeader,
               style: TextStyle(
-                fontSize: 14,
-                color: isMe ? Colors.white : const Color(0xFF0F172A),
-                height: 1.35,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: isMe ? AppColors.primaryBlue : const Color(0xFF475569),
               ),
             ),
-            const SizedBox(height: 4),
-            if (msg.sentAt != null)
-              Text(
-                DateFormat('hh:mm a').format(DateTime.tryParse(msg.sentAt!) ?? DateTime.now()),
-                style: TextStyle(
-                  fontSize: 10,
-                  color: isMe ? Colors.white70 : const Color(0xFF94A3B8),
-                ),
+          ),
+          Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.76,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: isMe ? AppColors.primary : Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(12),
+                topRight: const Radius.circular(12),
+                bottomLeft: Radius.circular(isMe ? 12 : 2),
+                bottomRight: Radius.circular(isMe ? 2 : 12),
               ),
-          ],
-        ),
+              border: isMe ? null : Border.all(color: const Color(0xFFE2E8F0)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x05000000),
+                  offset: Offset(0, 1),
+                  blurRadius: 3,
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: isMe
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
+              children: [
+                Text(
+                  msg.message,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isMe ? Colors.white : const Color(0xFF0F172A),
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                if (msg.sentAt != null)
+                  Text(
+                    DateFormat(
+                      'hh:mm a',
+                    ).format(DateTime.tryParse(msg.sentAt!) ?? DateTime.now()),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isMe ? Colors.white70 : const Color(0xFF94A3B8),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -319,8 +388,14 @@ class _MarketplaceChatScreenState extends State<MarketplaceChatScreen> {
               controller: _textController,
               decoration: InputDecoration(
                 hintText: 'Type your message...',
-                hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                hintStyle: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF94A3B8),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 filled: true,
                 fillColor: const Color(0xFFF8FAFC),
                 border: OutlineInputBorder(
@@ -333,7 +408,10 @@ class _MarketplaceChatScreenState extends State<MarketplaceChatScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                    width: 1.5,
+                  ),
                 ),
               ),
               textInputAction: TextInputAction.send,

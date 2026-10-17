@@ -1,3 +1,4 @@
+import 'package:cargo_setu/services/location_service.dart';
 import 'package:cargo_setu/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -10,7 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'marketplace_chat_screen.dart';
 
 /// Comprehensive specification and bidding screen for a freight load.
-/// Displays route, commodity characteristics, truck requirements, and commercial terms
+/// Displays route, distance, commodity characteristics, truck requirements, and commercial terms
 /// without ever exposing internal database IDs.
 class LoadDetailScreen extends StatelessWidget {
   final LoadPostModel load;
@@ -25,6 +26,16 @@ class LoadDetailScreen extends StatelessWidget {
       symbol: '₹',
       decimalDigits: 0,
     );
+    final distKm =
+        load.routeDistanceKm ??
+        LocationService.estimateCityDistanceKm(
+          originLat: load.originLat,
+          originLng: load.originLng,
+          originCity: load.originCity,
+          destLat: load.destinationLat,
+          destLng: load.destinationLng,
+          destCity: load.destinationCity,
+        );
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -65,14 +76,22 @@ class LoadDetailScreen extends StatelessWidget {
                     children: [
                       Column(
                         children: [
-                          const Icon(Icons.circle, size: 12, color: Color(0xFF10B981)),
+                          const Icon(
+                            Icons.circle,
+                            size: 12,
+                            color: Color(0xFF10B981),
+                          ),
                           Container(
                             width: 2,
                             height: 38,
                             color: const Color(0xFFCBD5E1),
                             margin: const EdgeInsets.symmetric(vertical: 2),
                           ),
-                          const Icon(Icons.location_on, size: 14, color: Color(0xFFEF4444)),
+                          const Icon(
+                            Icons.location_on,
+                            size: 14,
+                            color: Color(0xFFEF4444),
+                          ),
                         ],
                       ),
                       const SizedBox(width: 14),
@@ -81,35 +100,80 @@ class LoadDetailScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              load.originCity,
+                              load.originState != null &&
+                                      load.originState!.isNotEmpty
+                                  ? '${load.originCity}, ${load.originState}'
+                                  : load.originCity,
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
                                 color: Color(0xFF0F172A),
                               ),
                             ),
-                            if (load.originAddress != null && load.originAddress!.isNotEmpty)
+                            if (load.originAddress != null &&
+                                load.originAddress!.isNotEmpty)
                               Text(
-                                '${load.originAddress!}${load.originState != null ? ", ${load.originState!}" : ""}',
-                                style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+                                load.originAddress!,
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  color: Color(0xFF64748B),
+                                ),
                               ),
                             const SizedBox(height: 18),
                             Text(
-                              load.destinationCity,
+                              load.destinationState != null &&
+                                      load.destinationState!.isNotEmpty
+                                  ? '${load.destinationCity}, ${load.destinationState}'
+                                  : load.destinationCity,
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
                                 color: Color(0xFF0F172A),
                               ),
                             ),
-                            if (load.destinationAddress != null && load.destinationAddress!.isNotEmpty)
+                            if (load.destinationAddress != null &&
+                                load.destinationAddress!.isNotEmpty)
                               Text(
-                                '${load.destinationAddress!}${load.destinationState != null ? ", ${load.destinationState!}" : ""}',
-                                style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+                                load.destinationAddress!,
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  color: Color(0xFF64748B),
+                                ),
                               ),
                           ],
                         ),
                       ),
+                      if (distKm != null && distKm > 0)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFBFDBFE)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.route_outlined,
+                                size: 14,
+                                color: AppColors.primaryBlue,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                LocationService.formatDistanceKm(distKm),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.primaryBlue,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -120,11 +184,15 @@ class LoadDetailScreen extends StatelessWidget {
                     children: [
                       _infoPair(
                         'Pickup Schedule',
-                        load.pickupFrom != null ? _formatDate(load.pickupFrom!) : 'Immediate',
+                        load.pickupFrom != null
+                            ? _formatDate(load.pickupFrom!)
+                            : 'Immediate',
                       ),
                       _infoPair(
                         'Expected Delivery',
-                        load.deliveryTo != null ? _formatDate(load.deliveryTo!) : 'Flexible',
+                        load.deliveryTo != null
+                            ? _formatDate(load.deliveryTo!)
+                            : 'Flexible',
                       ),
                     ],
                   ),
@@ -148,7 +216,10 @@ class LoadDetailScreen extends StatelessWidget {
                         children: [
                           const Text(
                             'Asking Freight',
-                            style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF64748B),
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -164,13 +235,18 @@ class LoadDetailScreen extends StatelessWidget {
                         ],
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF1F5F9),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          load.priceType == 'PER_TON' ? 'Per Ton Rate' : 'Fixed Rate',
+                          load.priceType == 'PER_TON'
+                              ? 'Per Ton Rate'
+                              : 'Fixed Rate',
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -186,10 +262,15 @@ class LoadDetailScreen extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _infoPair('Settlement Mode', load.paymentTerms.displayName),
+                      _infoPair(
+                        'Settlement Mode',
+                        load.paymentTerms.displayName,
+                      ),
                       _infoPair(
                         'Advance Required',
-                        load.advancePercentage != null ? '${load.advancePercentage}%' : 'Negotiable',
+                        load.advancePercentage != null
+                            ? '${load.advancePercentage}%'
+                            : 'Negotiable',
                       ),
                     ],
                   ),
@@ -216,7 +297,9 @@ class LoadDetailScreen extends StatelessWidget {
                       Expanded(
                         child: _infoPair(
                           'Weight',
-                          load.weight != null ? '${load.weight} ${load.weightUnit.name}' : 'Not specified',
+                          load.weight != null
+                              ? '${load.weight} ${load.weightUnit.name}'
+                              : 'Not specified',
                         ),
                       ),
                     ],
@@ -227,18 +310,23 @@ class LoadDetailScreen extends StatelessWidget {
                       Expanded(
                         child: _infoPair(
                           'Volume',
-                          load.volume != null ? '${load.volume} CFT' : 'Not specified',
+                          load.volume != null
+                              ? '${load.volume} CFT'
+                              : 'Not specified',
                         ),
                       ),
                       Expanded(
                         child: _infoPair(
                           'Packages Count',
-                          load.packageCount != null ? '${load.packageCount} units' : 'Loose / Bulk',
+                          load.packageCount != null
+                              ? '${load.packageCount} units'
+                              : 'Loose / Bulk',
                         ),
                       ),
                     ],
                   ),
-                  if (load.cargoDescription != null && load.cargoDescription!.isNotEmpty) ...[
+                  if (load.cargoDescription != null &&
+                      load.cargoDescription!.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     const Divider(height: 1, color: Color(0xFFF1F5F9)),
                     const SizedBox(height: 10),
@@ -249,7 +337,10 @@ class LoadDetailScreen extends StatelessWidget {
                         children: [
                           const Text(
                             'Material Description',
-                            style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF64748B),
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -314,7 +405,11 @@ class LoadDetailScreen extends StatelessWidget {
                       color: AppColors.primaryBlue.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.business, color: AppColors.primaryBlue, size: 22),
+                    child: const Icon(
+                      Icons.business,
+                      color: AppColors.primaryBlue,
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -376,7 +471,10 @@ class LoadDetailScreen extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.primaryBlue,
                     side: const BorderSide(color: AppColors.primaryBlue),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -391,7 +489,8 @@ class LoadDetailScreen extends StatelessWidget {
                         OfferBottomSheet.show(
                           context: context,
                           title: 'Submit Offer for Load',
-                          routeSubtitle: '${load.originCity} → ${load.destinationCity}',
+                          routeSubtitle:
+                              '${load.originCity} → ${load.destinationCity}',
                           targetPrice: load.askingPrice,
                           onSubmit: (amount, advancePct, terms, remarks) async {
                             if (load.listingId == null) return;
@@ -424,7 +523,10 @@ class LoadDetailScreen extends StatelessWidget {
                       icon: const Icon(Icons.gavel, size: 18),
                       label: const Text(
                         'Submit Bid / Book Load',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryBlue,
@@ -551,12 +653,15 @@ class LoadDetailScreen extends StatelessWidget {
         listingId: load.listingId,
         participantCompanyId: load.companyId!,
         participantStaffId: load.postedByStaffId!,
-        initialMessage: 'Hi, I am interested in your load ${load.listingNumber ?? ""}: ${load.originCity} to ${load.destinationCity}.',
+        initialMessage:
+            'Hi, I am interested in your load ${load.listingNumber ?? ""}: ${load.originCity} to ${load.destinationCity}.',
       );
 
       if (!context.mounted) return;
 
-      if (conversation != null && conversation.id != null && conversation.id! > 0) {
+      if (conversation != null &&
+          conversation.id != null &&
+          conversation.id! > 0) {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => MarketplaceChatScreen(
@@ -572,10 +677,7 @@ class LoadDetailScreen extends StatelessWidget {
         );
       }
     } catch (e) {
-      _showChatErrorWithRetry(
-        context,
-        'Unable to initiate chat: $e',
-      );
+      _showChatErrorWithRetry(context, 'Unable to initiate chat: $e');
     }
   }
 

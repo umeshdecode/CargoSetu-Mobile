@@ -116,7 +116,8 @@ enum CapacityUnit {
   static CapacityUnit fromString(String? value) {
     if (value == null) return CapacityUnit.TONNE;
     final upper = value.toUpperCase();
-    if (upper == 'TONS' || upper == 'TON' || upper == 'TONNES') return CapacityUnit.TONNE;
+    if (upper == 'TONS' || upper == 'TON' || upper == 'TONNES')
+      return CapacityUnit.TONNE;
     if (upper == 'KGS' || upper == 'KILOGRAM') return CapacityUnit.KG;
     if (upper == 'LBS' || upper == 'POUNDS') return CapacityUnit.POUND;
     return CapacityUnit.values.firstWhere(
@@ -198,9 +199,31 @@ enum OfferStatus {
       orElse: () => OfferStatus.PENDING,
     );
   }
+
+  String get displayName {
+    switch (this) {
+      case OfferStatus.PENDING:
+        return 'Pending';
+      case OfferStatus.ACCEPTED:
+        return 'Accepted';
+      case OfferStatus.REJECTED:
+        return 'Rejected';
+      case OfferStatus.COUNTERED:
+        return 'Countered';
+      case OfferStatus.EXPIRED:
+        return 'Expired';
+      case OfferStatus.WITHDRAWN:
+        return 'Withdrawn';
+    }
+  }
 }
 
 enum BookingStatus {
+  REQUESTED,
+  PENDING_APPROVAL,
+  COUNTERED,
+  ACCEPTED,
+  REJECTED,
   PENDING_PAYMENT,
   CONFIRMED,
   IN_PROGRESS,
@@ -209,18 +232,27 @@ enum BookingStatus {
   DISPUTED;
 
   static BookingStatus fromString(String? value) {
+    if (value == null) return BookingStatus.PENDING_APPROVAL;
     return BookingStatus.values.firstWhere(
-      (e) => e.name == value,
-      orElse: () => BookingStatus.PENDING_PAYMENT,
+      (e) => e.name == value.toUpperCase(),
+      orElse: () => BookingStatus.PENDING_APPROVAL,
     );
   }
 
   String get displayName {
     switch (this) {
-      case BookingStatus.PENDING_PAYMENT:
-        return 'Pending Payment';
+      case BookingStatus.REQUESTED:
+      case BookingStatus.PENDING_APPROVAL:
+        return 'Pending Approval';
+      case BookingStatus.COUNTERED:
+        return 'Counter Offered';
+      case BookingStatus.ACCEPTED:
       case BookingStatus.CONFIRMED:
         return 'Confirmed';
+      case BookingStatus.REJECTED:
+        return 'Rejected';
+      case BookingStatus.PENDING_PAYMENT:
+        return 'Pending Payment';
       case BookingStatus.IN_PROGRESS:
         return 'In Transit';
       case BookingStatus.COMPLETED:
@@ -262,10 +294,15 @@ enum MarketplaceTripStatus {
   }
 
   String get displayName {
-    return name.replaceAll('_', ' ').toLowerCase().split(' ').map((word) {
-      if (word.isEmpty) return word;
-      return word[0].toUpperCase() + word.substring(1);
-    }).join(' ');
+    return name
+        .replaceAll('_', ' ')
+        .toLowerCase()
+        .split(' ')
+        .map((word) {
+          if (word.isEmpty) return word;
+          return word[0].toUpperCase() + word.substring(1);
+        })
+        .join(' ');
   }
 }
 
@@ -352,4 +389,3 @@ enum TruckAvailabilityStatus {
     );
   }
 }
-

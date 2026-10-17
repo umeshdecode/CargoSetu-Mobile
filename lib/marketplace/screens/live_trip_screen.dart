@@ -13,11 +13,7 @@ class LiveTripScreen extends StatefulWidget {
   final int? tripId;
   final int? bookingId;
 
-  const LiveTripScreen({
-    super.key,
-    this.tripId,
-    this.bookingId,
-  });
+  const LiveTripScreen({super.key, this.tripId, this.bookingId});
 
   @override
   State<LiveTripScreen> createState() => _LiveTripScreenState();
@@ -42,7 +38,9 @@ class _LiveTripScreenState extends State<LiveTripScreen> {
         _trip = await _service.getTrip(widget.tripId!);
       } else if (widget.bookingId != null) {
         final activeTrips = await _service.getActiveTrips();
-        _trip = activeTrips.firstWhereOrNull((t) => t.bookingId == widget.bookingId);
+        _trip = activeTrips.firstWhereOrNull(
+          (t) => t.bookingId == widget.bookingId,
+        );
       }
 
       if (_trip?.id != null) {
@@ -99,23 +97,23 @@ class _LiveTripScreenState extends State<LiveTripScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _trip == null
-              ? _buildEmptyState()
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildRouteHeaderCard(),
-                      const SizedBox(height: 16),
-                      _buildMilestoneProgression(),
-                      const SizedBox(height: 16),
-                      _buildTimelineSection(),
-                      const SizedBox(height: 20),
-                      _buildActionButtons(),
-                      const SizedBox(height: 40),
-                    ],
-                  ),
-                ),
+          ? _buildEmptyState()
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildRouteHeaderCard(),
+                  const SizedBox(height: 16),
+                  _buildMilestoneProgression(),
+                  const SizedBox(height: 16),
+                  _buildTimelineSection(),
+                  const SizedBox(height: 20),
+                  _buildActionButtons(),
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
     );
   }
 
@@ -177,7 +175,10 @@ class _LiveTripScreenState extends State<LiveTripScreen> {
               if (_trip!.actualStartTime != null)
                 Text(
                   'Started: ${DateFormat('dd MMM, hh:mm a').format(DateTime.tryParse(_trip!.actualStartTime!) ?? DateTime.now())}',
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF64748B),
+                  ),
                 ),
             ],
           ),
@@ -190,20 +191,37 @@ class _LiveTripScreenState extends State<LiveTripScreen> {
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.trip_origin, color: Color(0xFF059669), size: 14),
+                        Icon(
+                          Icons.trip_origin,
+                          color: Color(0xFF059669),
+                          size: 14,
+                        ),
                         SizedBox(width: 4),
-                        Text('Origin', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                        Text(
+                          'Origin',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 4),
                     Text(
                       _trip!.startCity ?? 'Origin City',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0F172A),
+                      ),
                     ),
                     if (_trip!.startAddress != null)
                       Text(
                         _trip!.startAddress!,
-                        style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF64748B),
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -220,20 +238,37 @@ class _LiveTripScreenState extends State<LiveTripScreen> {
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.location_on, color: Color(0xFFDC2626), size: 14),
+                        Icon(
+                          Icons.location_on,
+                          color: Color(0xFFDC2626),
+                          size: 14,
+                        ),
                         SizedBox(width: 4),
-                        Text('Destination', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                        Text(
+                          'Destination',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 4),
                     Text(
                       _trip!.endCity ?? 'Destination City',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0F172A),
+                      ),
                     ),
                     if (_trip!.endAddress != null)
                       Text(
                         _trip!.endAddress!,
-                        style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF64748B),
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -270,7 +305,11 @@ class _LiveTripScreenState extends State<LiveTripScreen> {
         children: [
           const Text(
             'Milestone Progression',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0F172A),
+            ),
           ),
           const SizedBox(height: 16),
           Row(
@@ -281,7 +320,9 @@ class _LiveTripScreenState extends State<LiveTripScreen> {
                 return Expanded(
                   child: Container(
                     height: 3,
-                    color: isDone ? const Color(0xFF059669) : const Color(0xFFE2E8F0),
+                    color: isDone
+                        ? const Color(0xFF059669)
+                        : const Color(0xFFE2E8F0),
                   ),
                 );
               }
@@ -297,7 +338,9 @@ class _LiveTripScreenState extends State<LiveTripScreen> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: isDone
-                          ? (isCurrent ? AppColors.primary : const Color(0xFF059669))
+                          ? (isCurrent
+                                ? AppColors.primary
+                                : const Color(0xFF059669))
                           : const Color(0xFFE2E8F0),
                     ),
                     child: Center(
@@ -314,7 +357,9 @@ class _LiveTripScreenState extends State<LiveTripScreen> {
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w600,
-                      color: isCurrent ? AppColors.primary : const Color(0xFF64748B),
+                      color: isCurrent
+                          ? AppColors.primary
+                          : const Color(0xFF64748B),
                     ),
                   ),
                 ],
@@ -342,7 +387,11 @@ class _LiveTripScreenState extends State<LiveTripScreen> {
             children: [
               const Text(
                 'Trip Activity Feed',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0F172A),
+                ),
               ),
               Text(
                 '${_timeline.length} Events',
@@ -357,7 +406,11 @@ class _LiveTripScreenState extends State<LiveTripScreen> {
               child: Center(
                 child: Text(
                   'No milestone events recorded yet.',
-                  style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8), fontStyle: FontStyle.italic),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF94A3B8),
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
               ),
             )
@@ -379,7 +432,11 @@ class _LiveTripScreenState extends State<LiveTripScreen> {
                         color: const Color(0xFFEFF6FF),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.check_circle_outline, size: 16, color: Color(0xFF2563EB)),
+                      child: const Icon(
+                        Icons.check_circle_outline,
+                        size: 16,
+                        color: Color(0xFF2563EB),
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -388,25 +445,40 @@ class _LiveTripScreenState extends State<LiveTripScreen> {
                         children: [
                           Text(
                             ev.eventType.replaceAll('_', ' '),
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF0F172A),
+                            ),
                           ),
                           if (ev.remarks != null && ev.remarks!.isNotEmpty)
                             Text(
                               ev.remarks!,
-                              style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF475569),
+                              ),
                             ),
                           if (ev.location != null)
                             Text(
                               'Near ${ev.location}',
-                              style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF64748B),
+                              ),
                             ),
                         ],
                       ),
                     ),
                     if (ev.eventTime != null)
                       Text(
-                        DateFormat('hh:mm a').format(DateTime.tryParse(ev.eventTime!) ?? DateTime.now()),
-                        style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                        DateFormat('hh:mm a').format(
+                          DateTime.tryParse(ev.eventTime!) ?? DateTime.now(),
+                        ),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF94A3B8),
+                        ),
                       ),
                   ],
                 );
@@ -426,17 +498,27 @@ class _LiveTripScreenState extends State<LiveTripScreen> {
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             onPressed: _showAddMilestoneSheet,
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.add_location_alt_outlined, color: Colors.white, size: 18),
+                Icon(
+                  Icons.add_location_alt_outlined,
+                  color: Colors.white,
+                  size: 18,
+                ),
                 SizedBox(width: 8),
                 Text(
                   'Post Milestone Update',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
                 ),
               ],
             ),
@@ -493,7 +575,11 @@ class _LiveTripScreenState extends State<LiveTripScreen> {
             children: [
               const Text(
                 'Record Trip Milestone',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
+                ),
               ),
               const SizedBox(height: 14),
               StatefulBuilder(
@@ -503,15 +589,23 @@ class _LiveTripScreenState extends State<LiveTripScreen> {
                       DropdownButtonFormField<String>(
                         value: eventType,
                         items: options.map((o) {
-                          return DropdownMenuItem(value: o, child: Text(o.replaceAll('_', ' ')));
+                          return DropdownMenuItem(
+                            value: o,
+                            child: Text(o.replaceAll('_', ' ')),
+                          );
                         }).toList(),
                         onChanged: (val) {
                           if (val != null) setModalState(() => eventType = val);
                         },
                         decoration: InputDecoration(
                           labelText: 'Milestone Type',
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -519,8 +613,13 @@ class _LiveTripScreenState extends State<LiveTripScreen> {
                         controller: locationCtrl,
                         decoration: InputDecoration(
                           labelText: 'Current Location City / Landmark',
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -530,7 +629,9 @@ class _LiveTripScreenState extends State<LiveTripScreen> {
                         decoration: InputDecoration(
                           labelText: 'Status Remarks',
                           contentPadding: const EdgeInsets.all(12),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       ),
                     ],
@@ -542,24 +643,43 @@ class _LiveTripScreenState extends State<LiveTripScreen> {
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                  ),
                   onPressed: () async {
                     if (_trip?.id == null) return;
                     Get.back();
                     final event = TripEventModel(
                       tripId: _trip!.id,
                       eventType: eventType,
-                      location: locationCtrl.text.trim().isNotEmpty ? locationCtrl.text.trim() : null,
-                      remarks: remarksCtrl.text.trim().isNotEmpty ? remarksCtrl.text.trim() : null,
+                      location: locationCtrl.text.trim().isNotEmpty
+                          ? locationCtrl.text.trim()
+                          : null,
+                      remarks: remarksCtrl.text.trim().isNotEmpty
+                          ? remarksCtrl.text.trim()
+                          : null,
                     );
-                    final success = await _service.addTripEvent(_trip!.id!, event);
+                    final success = await _service.addTripEvent(
+                      _trip!.id!,
+                      event,
+                    );
                     if (success) {
-                      Get.snackbar('Milestone Added', 'Trip update recorded successfully.',
-                          backgroundColor: const Color(0xFF059669), colorText: Colors.white);
+                      Get.snackbar(
+                        'Milestone Added',
+                        'Trip update recorded successfully.',
+                        backgroundColor: const Color(0xFF059669),
+                        colorText: Colors.white,
+                      );
                       _loadTripData();
                     }
                   },
-                  child: const Text('Save Milestone', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                  child: const Text(
+                    'Save Milestone',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
             ],

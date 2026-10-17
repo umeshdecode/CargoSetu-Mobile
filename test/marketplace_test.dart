@@ -1,8 +1,11 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get/get.dart' hide Response;
 import 'package:cargo_setu/network/api_request.dart';
+import 'package:cargo_setu/services/location_service.dart';
 import 'package:cargo_setu/util/url_const.dart';
+import 'package:cargo_setu/marketplace/controllers/marketplace_hub_controller.dart';
 import 'package:cargo_setu/marketplace/models/load_post_model.dart';
 import 'package:cargo_setu/marketplace/models/marketplace_offer_model.dart';
 import 'package:cargo_setu/marketplace/models/marketplace_booking_model.dart';
@@ -14,6 +17,8 @@ import 'package:cargo_setu/marketplace/screens/load_detail_screen.dart';
 import 'package:cargo_setu/marketplace/screens/truck_detail_screen.dart';
 import 'package:cargo_setu/marketplace/screens/create_truck_post_screen.dart';
 import 'package:cargo_setu/marketplace/screens/marketplace_chat_screen.dart';
+import 'package:cargo_setu/marketplace/screens/marketplace_hub_screen.dart';
+import 'package:cargo_setu/marketplace/widgets/city_autocomplete_field.dart';
 import 'package:cargo_setu/vehicle_management/models/vehicle_model.dart';
 import 'package:cargo_setu/vehicle_management/models/driver_model.dart';
 import 'package:cargo_setu/vehicle_management/services/vehicle_service.dart';
@@ -21,8 +26,32 @@ import 'package:cargo_setu/vehicle_management/services/vehicle_service.dart';
 class _FakeApiRequest implements ApiRequest {
   String? lastPostUrl;
   dynamic lastPostData;
+  String? lastGetUrl;
+  Map<String, dynamic>? lastGetQueryParams;
   int postCallCount = 0;
+  int getCallCount = 0;
   int statusCodeToReturn = 201;
+  dynamic getDataToReturn = const [];
+
+  @override
+  Future<Response<T>> get<T>({
+    required String url,
+    Map<String, dynamic>? queryParams,
+    Map<String, dynamic>? headers,
+    String? token,
+    Duration? receiveTimeout,
+    Duration? sendTimeout,
+    ResponseType? responseType,
+  }) async {
+    getCallCount++;
+    lastGetUrl = url;
+    lastGetQueryParams = queryParams;
+    return Response<T>(
+      requestOptions: RequestOptions(path: url),
+      statusCode: 200,
+      data: {'responseCode': 200, 'data': getDataToReturn} as T?,
+    );
+  }
 
   @override
   Future<Response> post({
@@ -33,6 +62,7 @@ class _FakeApiRequest implements ApiRequest {
     String? token,
     Duration? receiveTimeout,
     Duration? sendTimeout,
+    ResponseType? responseType,
   }) async {
     postCallCount++;
     lastPostUrl = url;
@@ -53,6 +83,19 @@ class _FakeMarketplaceService extends MarketplaceService {
   bool throwOnStartConversation = false;
   int startConversationCalls = 0;
   TruckPostModel? submittedTruckPost;
+  MarketplaceBookingModel? createdBooking;
+  List<LoadPostModel> loadsToReturn = const [];
+  List<TruckPostModel> trucksToReturn = const [];
+  List<LoadPostModel> myLoadsToReturn = const [];
+  List<TruckPostModel> myTrucksToReturn = const [];
+  List<MarketplaceOfferModel> myOffersToReturn = const [];
+  List<MarketplaceOfferModel> listingOffersToReturn = const [];
+  List<MarketplaceBookingModel> outgoingBookingsToReturn = const [];
+  List<MarketplaceBookingModel> incomingBookingsToReturn = const [];
+  int? acceptedBookingId;
+  int? rejectedBookingId;
+  int? counteredBookingId;
+  int? acceptedOfferId;
 
   _FakeMarketplaceService() : super(api: _FakeApiRequest());
 
@@ -61,7 +104,7 @@ class _FakeMarketplaceService extends MarketplaceService {
     int? listingId,
     int? bookingId,
     required int participantCompanyId,
-    required int participantStaffId,
+    int? participantStaffId,
     String? initialMessage,
   }) async {
     startConversationCalls++;
@@ -74,6 +117,133 @@ class _FakeMarketplaceService extends MarketplaceService {
   @override
   Future<bool> createTruckPost(TruckPostModel model) async {
     submittedTruckPost = model;
+    return true;
+  }
+
+  @override
+  Future<bool> createBooking(MarketplaceBookingModel model) async {
+    createdBooking = model;
+    return true;
+  }
+
+  @override
+  Future<List<LoadPostModel>> searchLoads({
+    String? originCity,
+    String? destinationCity,
+    String? cargoType,
+    DateTime? pickupDate,
+    DateTime? pickupFrom,
+    DateTime? pickupTo,
+    double? minWeight,
+    double? maxWeight,
+    String? requiredTruckType,
+    String? truckType,
+    int? page,
+    int? size,
+  }) async => loadsToReturn;
+
+  @override
+  Future<List<TruckPostModel>> searchTrucks({
+    String? currentCity,
+    String? routeTo,
+    String? originCity,
+    String? destinationCity,
+    double? originLat,
+    double? originLng,
+    double? destinationLat,
+    double? destinationLng,
+    double? radiusKm,
+    String? truckType,
+    String? bodyType,
+    double? minCapacity,
+    int? page,
+    int? size,
+  }) async => trucksToReturn;
+
+  @override
+  Future<List<LoadPostModel>> getMyLoads({
+    String? status,
+    int? page,
+    int? size,
+  }) async => myLoadsToReturn;
+
+  @override
+  Future<List<TruckPostModel>> getMyTrucks({
+    String? status,
+    int? page,
+    int? size,
+  }) async => myTrucksToReturn;
+
+  @override
+  Future<List<MarketplaceOfferModel>> getMyOffers() async => myOffersToReturn;
+
+  @override
+  Future<List<MarketplaceOfferModel>> getOffersForListing(
+    int listingId,
+  ) async => listingOffersToReturn;
+
+  @override
+  Future<List<MarketplaceBookingModel>> getMyBookings({
+    String? role,
+    String? status,
+  }) async {
+    if (role == 'OUTGOING') return outgoingBookingsToReturn;
+    if (role == 'INCOMING') return incomingBookingsToReturn;
+    return [...outgoingBookingsToReturn, ...incomingBookingsToReturn];
+  }
+
+  @override
+  Future<MarketplaceBookingModel?> acceptBooking(
+    int bookingId, {
+    int? vehicleId,
+    int? driverId,
+  }) async {
+    acceptedBookingId = bookingId;
+    return MarketplaceBookingModel(
+      id: bookingId,
+      bookingNumber: 'BK-ACCEPTED',
+      agreedFreight: 45000,
+      bookingStatus: BookingStatus.CONFIRMED,
+    );
+  }
+
+  @override
+  Future<MarketplaceBookingModel?> rejectBooking(
+    int bookingId, {
+    String? reason,
+  }) async {
+    rejectedBookingId = bookingId;
+    return MarketplaceBookingModel(
+      id: bookingId,
+      bookingNumber: 'BK-REJECTED',
+      agreedFreight: 45000,
+      bookingStatus: BookingStatus.REJECTED,
+      rejectionReason: reason,
+    );
+  }
+
+  @override
+  Future<MarketplaceBookingModel?> counterBooking(
+    int bookingId, {
+    required double counterFreight,
+    PaymentTermType? paymentTerms,
+    int? advancePercentage,
+    String? remarks,
+  }) async {
+    counteredBookingId = bookingId;
+    return MarketplaceBookingModel(
+      id: bookingId,
+      bookingNumber: 'BK-COUNTERED',
+      agreedFreight: counterFreight,
+      counterFreight: counterFreight,
+      bookingStatus: BookingStatus.COUNTERED,
+      remarks: remarks,
+    );
+  }
+
+  @override
+  Future<bool> acceptOffer(int offerId) async {
+    acceptedOfferId = offerId;
     return true;
   }
 }
@@ -113,94 +283,136 @@ void main() {
   group('Marketplace URL Configuration Tests', () {
     test('Base URL and marketplace root are configured properly', () {
       expect(Urls.baseUrl, startsWith('http'));
-      expect(Urls.marketplace, equals('${Urls.baseUrl}/api/v2/cargosetu/marketplace'));
+      expect(
+        Urls.marketplace,
+        equals('${Urls.baseUrl}/api/v2/cargosetu/marketplace'),
+      );
     });
 
     test('Offer URLs match backend controller mappings', () {
       expect(Urls.marketplaceOffers, equals('${Urls.marketplace}/offers'));
-      expect(Urls.marketplaceOffersForListing(42), equals('${Urls.marketplace}/listings/42/offers'));
-      expect(Urls.marketplaceOfferAccept(10), equals('${Urls.marketplaceOffers}/10/accept'));
-      expect(Urls.marketplaceOfferReject(10), equals('${Urls.marketplaceOffers}/10/reject'));
-      expect(Urls.marketplaceOfferCounter(10), equals('${Urls.marketplaceOffers}/10/counter'));
+      expect(
+        Urls.marketplaceOffersForListing(42),
+        equals('${Urls.marketplace}/listings/42/offers'),
+      );
+      expect(
+        Urls.marketplaceOfferAccept(10),
+        equals('${Urls.marketplaceOffers}/10/accept'),
+      );
+      expect(
+        Urls.marketplaceOfferReject(10),
+        equals('${Urls.marketplaceOffers}/10/reject'),
+      );
+      expect(
+        Urls.marketplaceOfferCounter(10),
+        equals('${Urls.marketplaceOffers}/10/counter'),
+      );
     });
 
     test('Booking URLs match backend controller mappings', () {
       expect(Urls.marketplaceBookings, equals('${Urls.marketplace}/bookings'));
-      expect(Urls.marketplaceBookListing(99), equals('${Urls.marketplaceBookings}/listing/99'));
-      expect(Urls.marketplaceBookingById(101), equals('${Urls.marketplaceBookings}/101'));
-      expect(Urls.marketplaceBookingCancel(101), equals('${Urls.marketplaceBookings}/101/cancel'));
+      expect(
+        Urls.marketplaceBookListing(99),
+        equals('${Urls.marketplaceBookings}/listing/99'),
+      );
+      expect(
+        Urls.marketplaceBookingById(101),
+        equals('${Urls.marketplaceBookings}/101'),
+      );
+      expect(
+        Urls.marketplaceBookingCancel(101),
+        equals('${Urls.marketplaceBookings}/101/cancel'),
+      );
     });
 
     test('Chat URLs match backend controller mappings', () {
-      expect(Urls.marketplaceConversations, equals('${Urls.marketplace}/conversations'));
-      expect(Urls.marketplaceMessages(5), equals('${Urls.marketplaceConversations}/5/messages'));
-      expect(Urls.marketplaceConversationRead(5), equals('${Urls.marketplaceConversations}/5/read'));
+      expect(
+        Urls.marketplaceConversations,
+        equals('${Urls.marketplace}/conversations'),
+      );
+      expect(
+        Urls.marketplaceMessages(5),
+        equals('${Urls.marketplaceConversations}/5/messages'),
+      );
+      expect(
+        Urls.marketplaceConversationRead(5),
+        equals('${Urls.marketplaceConversations}/5/read'),
+      );
     });
   });
 
   group('Marketplace Offer DTO & Service Tests', () {
-    test('toJson matches backend CreateOfferRequest exactly (amount, paymentTerms, validUntil, message)', () {
-      final offer = MarketplaceOfferModel(
-        id: 99,
-        listingId: 100,
-        offeredAmount: 25000.0,
-        advancePercentage: 20,
-        paymentTerms: PaymentTermType.ADVANCE_PERCENT,
-        validUntil: '2026-10-25T18:00:00',
-        remarks: 'Ready for immediate dispatch',
-      );
+    test(
+      'toJson matches backend CreateOfferRequest exactly (amount, paymentTerms, validUntil, message)',
+      () {
+        final offer = MarketplaceOfferModel(
+          id: 99,
+          listingId: 100,
+          offeredAmount: 25000.0,
+          advancePercentage: 20,
+          paymentTerms: PaymentTermType.ADVANCE_PERCENT,
+          validUntil: '2026-10-25T18:00:00',
+          remarks: 'Ready for immediate dispatch',
+        );
 
-      final json = offer.toJson();
-      expect(
-        json,
-        equals({
-          'amount': 25000.0,
-          'paymentTerms': 'ADVANCE_PERCENT',
-          'validUntil': '2026-10-25T18:00:00',
-          'message': 'Ready for immediate dispatch',
-        }),
-      );
-      expect(json.containsKey('offeredAmount'), isFalse);
-      expect(json.containsKey('remarks'), isFalse);
-      expect(json.containsKey('listingId'), isFalse);
-      expect(json.containsKey('status'), isFalse);
-    });
+        final json = offer.toJson();
+        expect(
+          json,
+          equals({
+            'amount': 25000.0,
+            'paymentTerms': 'ADVANCE_PERCENT',
+            'validUntil': '2026-10-25T18:00:00',
+            'message': 'Ready for immediate dispatch',
+          }),
+        );
+        expect(json.containsKey('offeredAmount'), isFalse);
+        expect(json.containsKey('remarks'), isFalse);
+        expect(json.containsKey('listingId'), isFalse);
+        expect(json.containsKey('status'), isFalse);
+      },
+    );
 
-    test('submitOffer rejects missing or invalid listingId without falling back to legacy endpoint', () async {
-      final fakeApi = _FakeApiRequest();
-      final service = MarketplaceService(api: fakeApi);
+    test(
+      'submitOffer rejects missing or invalid listingId without falling back to legacy endpoint',
+      () async {
+        final fakeApi = _FakeApiRequest();
+        final service = MarketplaceService(api: fakeApi);
 
-      final missingListingOffer = MarketplaceOfferModel(
-        listingId: null,
-        offeredAmount: 25000.0,
-      );
-      final zeroListingOffer = MarketplaceOfferModel(
-        listingId: 0,
-        offeredAmount: 25000.0,
-      );
+        final missingListingOffer = MarketplaceOfferModel(
+          listingId: null,
+          offeredAmount: 25000.0,
+        );
+        final zeroListingOffer = MarketplaceOfferModel(
+          listingId: 0,
+          offeredAmount: 25000.0,
+        );
 
-      expect(await service.submitOffer(missingListingOffer), isFalse);
-      expect(await service.submitOffer(zeroListingOffer), isFalse);
-      expect(fakeApi.postCallCount, equals(0));
+        expect(await service.submitOffer(missingListingOffer), isFalse);
+        expect(await service.submitOffer(zeroListingOffer), isFalse);
+        expect(fakeApi.postCallCount, equals(0));
 
-      final validOffer = MarketplaceOfferModel(
-        listingId: 42,
-        offeredAmount: 25000.0,
-        paymentTerms: PaymentTermType.TO_PAY,
-        remarks: 'Direct delivery',
-      );
-      expect(await service.submitOffer(validOffer), isTrue);
-      expect(fakeApi.postCallCount, equals(1));
-      expect(fakeApi.lastPostUrl, equals(Urls.marketplaceOffersForListing(42)));
-      expect(
-        fakeApi.lastPostData,
-        equals({
-          'amount': 25000.0,
-          'paymentTerms': 'TO_PAY',
-          'message': 'Direct delivery',
-        }),
-      );
-    });
+        final validOffer = MarketplaceOfferModel(
+          listingId: 42,
+          offeredAmount: 25000.0,
+          paymentTerms: PaymentTermType.TO_PAY,
+          remarks: 'Direct delivery',
+        );
+        expect(await service.submitOffer(validOffer), isTrue);
+        expect(fakeApi.postCallCount, equals(1));
+        expect(
+          fakeApi.lastPostUrl,
+          equals(Urls.marketplaceOffersForListing(42)),
+        );
+        expect(
+          fakeApi.lastPostData,
+          equals({
+            'amount': 25000.0,
+            'paymentTerms': 'TO_PAY',
+            'message': 'Direct delivery',
+          }),
+        );
+      },
+    );
 
     test('fromJson parses enriched backend OfferResponse correctly', () {
       final backendPayload = {
@@ -295,35 +507,38 @@ void main() {
   });
 
   group('Marketplace Truck Post & Chat Model Tests', () {
-    test('TruckPostModel toJson omits vehicleId when null instead of falling back to 1', () {
-      final truckWithoutVehicle = TruckPostModel(
-        currentCity: 'Pune',
-        routeTo: 'Mumbai',
-        availableCapacity: 15.0,
-      );
+    test(
+      'TruckPostModel toJson omits vehicleId when null instead of falling back to 1',
+      () {
+        final truckWithoutVehicle = TruckPostModel(
+          currentCity: 'Pune',
+          routeTo: 'Mumbai',
+          availableCapacity: 15.0,
+        );
 
-      final jsonWithoutVehicle = truckWithoutVehicle.toJson();
-      expect(jsonWithoutVehicle.containsKey('vehicleId'), isFalse);
+        final jsonWithoutVehicle = truckWithoutVehicle.toJson();
+        expect(jsonWithoutVehicle.containsKey('vehicleId'), isFalse);
 
-      final truckWithVehicle = TruckPostModel(
-        vehicleId: 12,
-        driverId: 8,
-        currentCity: 'Pune',
-        routeTo: 'Mumbai',
-        availableCapacity: 15.0,
-        passingCapacityTons: 15.0,
-        pricePerKm: 55.0,
-      );
+        final truckWithVehicle = TruckPostModel(
+          vehicleId: 12,
+          driverId: 8,
+          currentCity: 'Pune',
+          routeTo: 'Mumbai',
+          availableCapacity: 15.0,
+          passingCapacityTons: 15.0,
+          pricePerKm: 55.0,
+        );
 
-      final json = truckWithVehicle.toJson();
-      expect(json['vehicleId'], equals(12));
-      expect(json['driverId'], equals(8));
-      expect(json['currentCity'], equals('Pune'));
-      expect(json['routeTo'], equals('Mumbai'));
-      expect(json['totalCapacity'], equals(15.0));
-      expect(json['availableCapacity'], equals(15.0));
-      expect(json['pricePerKm'], equals(55.0));
-    });
+        final json = truckWithVehicle.toJson();
+        expect(json['vehicleId'], equals(12));
+        expect(json['driverId'], equals(8));
+        expect(json['currentCity'], equals('Pune'));
+        expect(json['routeTo'], equals('Mumbai'));
+        expect(json['totalCapacity'], equals(15.0));
+        expect(json['availableCapacity'], equals(15.0));
+        expect(json['pricePerKm'], equals(55.0));
+      },
+    );
 
     test('ChatMessageModel identifies message sender correctly', () {
       final msg = ChatMessageModel.fromJson({
@@ -349,180 +564,513 @@ void main() {
   });
 
   group('Chat UI Failure & Vehicle Selection Widget Tests', () {
-    testWidgets('LoadDetailScreen does not open chat when startConversation fails and shows Retry action', (tester) async {
-      final fakeService = _FakeMarketplaceService()..conversationToReturn = null;
-      final load = LoadPostModel(
-        listingId: 10,
-        companyId: 200,
-        postedByStaffId: 8,
-        companyName: 'Apex Shippers',
-        originCity: 'Pune',
-        destinationCity: 'Delhi',
-      );
+    testWidgets(
+      'LoadDetailScreen does not open chat when startConversation fails and shows Retry action',
+      (tester) async {
+        final fakeService = _FakeMarketplaceService()
+          ..conversationToReturn = null;
+        final load = LoadPostModel(
+          listingId: 10,
+          companyId: 200,
+          postedByStaffId: 8,
+          companyName: 'Apex Shippers',
+          originCity: 'Pune',
+          destinationCity: 'Delhi',
+        );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: ThemeData(splashFactory: InkRipple.splashFactory),
-          home: LoadDetailScreen(load: load, service: fakeService),
-        ),
-      );
-
-      final chatBtn = find.text('Chat');
-      await tester.ensureVisible(chatBtn);
-      await tester.pumpAndSettle();
-      await tester.tap(chatBtn);
-      await tester.pumpAndSettle();
-
-      expect(fakeService.startConversationCalls, equals(1));
-      expect(find.byType(MarketplaceChatScreen), findsNothing);
-      expect(find.textContaining('Unable to start chat conversation'), findsOneWidget);
-      expect(find.text('Retry'), findsOneWidget);
-    });
-
-    testWidgets('TruckDetailScreen does not open chat when participant IDs are missing', (tester) async {
-      final fakeService = _FakeMarketplaceService();
-      final truck = TruckPostModel(
-        listingId: 20,
-        companyId: null,
-        postedByStaffId: null,
-        currentCity: 'Mumbai',
-        routeTo: 'Surat',
-      );
-
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: ThemeData(splashFactory: InkRipple.splashFactory),
-          home: TruckDetailScreen(truck: truck, service: fakeService),
-        ),
-      );
-
-      final chatBtn = find.text('Chat');
-      await tester.ensureVisible(chatBtn);
-      await tester.pumpAndSettle();
-      await tester.tap(chatBtn);
-      await tester.pumpAndSettle();
-
-      expect(fakeService.startConversationCalls, equals(0));
-      expect(find.byType(MarketplaceChatScreen), findsNothing);
-      expect(find.textContaining('participant details are unavailable'), findsOneWidget);
-      expect(find.text('Retry'), findsOneWidget);
-    });
-
-    testWidgets('CreateTruckPostScreen requires explicit vehicle selection and does not fallback to first vehicle', (tester) async {
-      final fakeMarketplace = _FakeMarketplaceService();
-      final fakeVehicleService = _FakeVehicleService(
-        vehiclesToReturn: [
-          VehicleModel(
-            id: 42,
-            chassisNumber: 'CH123',
-            engineNumber: 'EN123',
-            registrationNumber: 'MH12AB1234',
-            vehicleType: 'TRUCK',
-            model: 'Prima',
-            manufacturer: 'Tata',
-            capacityKg: 20000,
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: ThemeData(splashFactory: InkRipple.splashFactory),
+            home: LoadDetailScreen(load: load, service: fakeService),
           ),
-        ],
-      );
+        );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: ThemeData(splashFactory: InkRipple.splashFactory),
-          home: CreateTruckPostScreen(
-            service: fakeMarketplace,
-            vehicleService: fakeVehicleService,
+        final chatBtn = find.text('Chat');
+        await tester.ensureVisible(chatBtn);
+        await tester.pumpAndSettle();
+        await tester.tap(chatBtn);
+        await tester.pumpAndSettle();
+
+        expect(fakeService.startConversationCalls, equals(1));
+        expect(find.byType(MarketplaceChatScreen), findsNothing);
+        expect(
+          find.textContaining('Unable to start chat conversation'),
+          findsOneWidget,
+        );
+        expect(find.text('Retry'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'TruckDetailScreen does not open chat when participant IDs are missing',
+      (tester) async {
+        final fakeService = _FakeMarketplaceService();
+        final truck = TruckPostModel(
+          listingId: 20,
+          companyId: null,
+          postedByStaffId: null,
+          currentCity: 'Mumbai',
+          routeTo: 'Surat',
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: ThemeData(splashFactory: InkRipple.splashFactory),
+            home: TruckDetailScreen(truck: truck, service: fakeService),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
 
-      // Attempt to submit without selecting a vehicle
-      final publishBtn = find.text('Publish Truck Availability');
-      await tester.ensureVisible(publishBtn);
-      await tester.pumpAndSettle();
-      await tester.tap(publishBtn);
-      await tester.pumpAndSettle();
+        final chatBtn = find.text('Chat');
+        await tester.ensureVisible(chatBtn);
+        await tester.pumpAndSettle();
+        await tester.tap(chatBtn);
+        await tester.pumpAndSettle();
 
-      expect(fakeMarketplace.submittedTruckPost, isNull);
-      expect(
-        find.text('Please select a vehicle from your fleet before publishing.'),
-        findsOneWidget,
-      );
-    });
+        expect(fakeService.startConversationCalls, equals(0));
+        expect(find.byType(MarketplaceChatScreen), findsNothing);
+        expect(
+          find.textContaining('participant details are unavailable'),
+          findsOneWidget,
+        );
+        expect(find.text('Retry'), findsOneWidget);
+      },
+    );
 
-    testWidgets('CreateTruckPostScreen handles fleet load failure and empty fleet with Retry', (tester) async {
-      final fakeMarketplace = _FakeMarketplaceService();
-      final fakeVehicleService = _FakeVehicleService(shouldThrow: true);
+    testWidgets(
+      'CreateTruckPostScreen requires explicit vehicle selection and does not fallback to first vehicle',
+      (tester) async {
+        final fakeMarketplace = _FakeMarketplaceService();
+        final fakeVehicleService = _FakeVehicleService(
+          vehiclesToReturn: [
+            VehicleModel(
+              id: 42,
+              chassisNumber: 'CH123',
+              engineNumber: 'EN123',
+              registrationNumber: 'MH12AB1234',
+              vehicleType: 'TRUCK',
+              model: 'Prima',
+              manufacturer: 'Tata',
+              capacityKg: 20000,
+            ),
+          ],
+        );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: ThemeData(splashFactory: InkRipple.splashFactory),
-          home: CreateTruckPostScreen(
-            service: fakeMarketplace,
-            vehicleService: fakeVehicleService,
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: ThemeData(splashFactory: InkRipple.splashFactory),
+            home: CreateTruckPostScreen(
+              service: fakeMarketplace,
+              vehicleService: fakeVehicleService,
+            ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
+        await tester.pumpAndSettle();
 
-      expect(find.textContaining('Unable to load your fleet vehicles'), findsOneWidget);
-      expect(find.text('Retry'), findsOneWidget);
+        // Attempt to submit without selecting a vehicle
+        final publishBtn = find.text('Publish Truck Availability');
+        await tester.ensureVisible(publishBtn);
+        await tester.pumpAndSettle();
+        await tester.tap(publishBtn);
+        await tester.pumpAndSettle();
 
-      // Now make retry succeed with empty fleet
-      fakeVehicleService.shouldThrow = false;
-      fakeVehicleService.vehiclesToReturn = [];
-      final retryBtn = find.text('Retry');
-      await tester.ensureVisible(retryBtn);
-      await tester.pumpAndSettle();
-      await tester.tap(retryBtn);
-      await tester.pumpAndSettle();
-
-      expect(find.textContaining('No vehicles found in your fleet'), findsOneWidget);
-    });
-
-    testWidgets('CreateTruckPostScreen selecting a vehicle with LCV_CONTAINER bodyType does not throw DropdownButton error', (tester) async {
-      final fakeMarketplace = _FakeMarketplaceService();
-      final fakeVehicleService = _FakeVehicleService(
-        vehiclesToReturn: [
-          VehicleModel(
-            id: 77,
-            chassisNumber: 'CH777',
-            engineNumber: 'EN777',
-            registrationNumber: 'MH14XY7777',
-            vehicleType: 'LCV',
-            truckType: 'LCV',
-            bodyType: 'LCV_CONTAINER',
-            model: 'Bolero Pickup',
-            manufacturer: 'Mahindra',
-            capacityKg: 3500,
+        expect(fakeMarketplace.submittedTruckPost, isNull);
+        expect(
+          find.text(
+            'Please select a vehicle from your fleet before publishing.',
           ),
-        ],
-      );
+          findsOneWidget,
+        );
+      },
+    );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: ThemeData(splashFactory: InkRipple.splashFactory),
-          home: CreateTruckPostScreen(
-            service: fakeMarketplace,
-            vehicleService: fakeVehicleService,
+    testWidgets(
+      'CreateTruckPostScreen handles fleet load failure and empty fleet with Retry',
+      (tester) async {
+        final fakeMarketplace = _FakeMarketplaceService();
+        final fakeVehicleService = _FakeVehicleService(shouldThrow: true);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: ThemeData(splashFactory: InkRipple.splashFactory),
+            home: CreateTruckPostScreen(
+              service: fakeMarketplace,
+              vehicleService: fakeVehicleService,
+            ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
+        await tester.pumpAndSettle();
 
-      // Open vehicle dropdown and select the LCV_CONTAINER vehicle
-      final dropdownPrompt = find.text('Select a vehicle...');
-      await tester.ensureVisible(dropdownPrompt);
-      await tester.pumpAndSettle();
-      await tester.tap(dropdownPrompt);
-      await tester.pumpAndSettle();
+        expect(
+          find.textContaining('Unable to load your fleet vehicles'),
+          findsOneWidget,
+        );
+        expect(find.text('Retry'), findsOneWidget);
 
-      final vehicleOption = find.text('MH14XY7777 (Bolero Pickup)').last;
-      await tester.tap(vehicleOption);
-      await tester.pumpAndSettle();
+        // Now make retry succeed with empty fleet
+        fakeVehicleService.shouldThrow = false;
+        fakeVehicleService.vehiclesToReturn = [];
+        final retryBtn = find.text('Retry');
+        await tester.ensureVisible(retryBtn);
+        await tester.pumpAndSettle();
+        await tester.tap(retryBtn);
+        await tester.pumpAndSettle();
 
-      expect(tester.takeException(), isNull);
-      expect(find.text('LCV CONTAINER'), findsOneWidget);
-    });
+        expect(
+          find.textContaining('No vehicles found in your fleet'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'CreateTruckPostScreen selecting a vehicle with LCV_CONTAINER bodyType does not throw DropdownButton error',
+      (tester) async {
+        final fakeMarketplace = _FakeMarketplaceService();
+        final fakeVehicleService = _FakeVehicleService(
+          vehiclesToReturn: [
+            VehicleModel(
+              id: 77,
+              chassisNumber: 'CH777',
+              engineNumber: 'EN777',
+              registrationNumber: 'MH14XY7777',
+              vehicleType: 'LCV',
+              truckType: 'LCV',
+              bodyType: 'LCV_CONTAINER',
+              model: 'Bolero Pickup',
+              manufacturer: 'Mahindra',
+              capacityKg: 3500,
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: ThemeData(splashFactory: InkRipple.splashFactory),
+            home: CreateTruckPostScreen(
+              service: fakeMarketplace,
+              vehicleService: fakeVehicleService,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Open vehicle dropdown and select the LCV_CONTAINER vehicle
+        final dropdownPrompt = find.text('Select a vehicle...');
+        await tester.ensureVisible(dropdownPrompt);
+        await tester.pumpAndSettle();
+        await tester.tap(dropdownPrompt);
+        await tester.pumpAndSettle();
+
+        final vehicleOption = find.text('MH14XY7777 (Bolero Pickup)').last;
+        await tester.tap(vehicleOption);
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(find.text('LCV CONTAINER'), findsOneWidget);
+      },
+    );
   });
+
+  group(
+    'Phase 1-6 Marketplace Workflows, Chat Identity, Route Distance & Corridor Tests',
+    () {
+      testWidgets(
+        'TruckDetailScreen uses Request Truck Capacity wording and sets PENDING_APPROVAL state',
+        (tester) async {
+          final fakeService = _FakeMarketplaceService();
+          final truck = TruckPostModel(
+            listingId: 50,
+            companyId: 20,
+            companyName: 'FastTrack Transporters',
+            postedByStaffId: 5,
+            currentCity: 'Pune',
+            currentState: 'Maharashtra',
+            routeTo: 'Ahmedabad',
+            routeToState: 'Gujarat',
+            availableCapacity: 18.0,
+            minimumPrice: 32000,
+          );
+
+          await tester.pumpWidget(
+            GetMaterialApp(
+              theme: ThemeData(splashFactory: InkRipple.splashFactory),
+              home: TruckDetailScreen(truck: truck, service: fakeService),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          // Verify Request Truck Capacity wording instead of Book Truck Capacity
+          expect(find.text('Request Truck Capacity'), findsOneWidget);
+          expect(find.text('Book Truck Capacity'), findsNothing);
+          // Verify route distance badge is shown (Pune -> Ahmedabad ~ 518 km)
+          expect(find.textContaining('Approx.'), findsOneWidget);
+
+          final reqBtn = find.text('Request Truck Capacity');
+          await tester.ensureVisible(reqBtn);
+          await tester.pumpAndSettle();
+          await tester.tap(reqBtn);
+          await tester.pumpAndSettle();
+
+          expect(find.text('Send Booking Request'), findsOneWidget);
+          expect(find.text('Confirm Booking'), findsNothing);
+
+          await tester.tap(find.text('Send Booking Request'));
+          await tester.pump(const Duration(seconds: 5));
+          await tester.pumpAndSettle();
+
+          expect(fakeService.createdBooking, isNotNull);
+          expect(
+            fakeService.createdBooking!.status,
+            equals(BookingStatus.PENDING_APPROVAL),
+          );
+          expect(
+            find.textContaining('Waiting for transporter approval'),
+            findsWidgets,
+          );
+        },
+      );
+
+      testWidgets(
+        'MarketplaceChatScreen renders own messages right-aligned and other messages left-aligned with sender headers',
+        (tester) async {
+          final messages = [
+            ChatMessageModel(
+              id: 1,
+              conversationId: 77,
+              senderStaffId: 10,
+              senderStaffName: 'Rahul Sharma',
+              senderCompanyName: 'Shipper Corp',
+              message: 'Can you load tomorrow at 9 AM?',
+              sentAt: '2026-10-17T09:00:00',
+              isMe: true,
+            ),
+            ChatMessageModel(
+              id: 2,
+              conversationId: 77,
+              senderStaffId: 20,
+              senderStaffName: 'Vikram Singh',
+              senderCompanyName: 'Bharat Fleet Co',
+              message: 'Yes, truck is stationed at Pune Chakan.',
+              sentAt: '2026-10-17T09:05:00',
+              isMe: false,
+            ),
+          ];
+
+          await tester.pumpWidget(
+            GetMaterialApp(
+              theme: ThemeData(splashFactory: InkRipple.splashFactory),
+              home: MarketplaceChatScreen(
+                conversationId: 77,
+                title: 'Bharat Fleet Co',
+                initialMessages: messages,
+                currentUserName: 'Rahul Sharma',
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          expect(find.text('You · Rahul Sharma'), findsOneWidget);
+          expect(find.text('Bharat Fleet Co · Vikram Singh'), findsOneWidget);
+          expect(find.text('Can you load tomorrow at 9 AM?'), findsOneWidget);
+          expect(
+            find.text('Yes, truck is stationed at Pune Chakan.'),
+            findsOneWidget,
+          );
+
+          final myAlign = tester.widget<Align>(
+            find.byKey(const ValueKey('chat_bubble_1_me')),
+          );
+          final otherAlign = tester.widget<Align>(
+            find.byKey(const ValueKey('chat_bubble_2_other')),
+          );
+          expect(myAlign.alignment, equals(Alignment.centerRight));
+          expect(otherAlign.alignment, equals(Alignment.centerLeft));
+        },
+      );
+
+      testWidgets(
+        'MarketplaceHubScreen My Activity shows My Bids, My Booking Requests, Incoming Requests, and triggers approval actions',
+        (tester) async {
+          final fakeService = _FakeMarketplaceService()
+            ..myOffersToReturn = [
+              MarketplaceOfferModel(
+                id: 301,
+                listingId: 90,
+                listingNumber: 'LD-0090',
+                originCity: 'Mumbai',
+                destinationCity: 'Bangalore',
+                listingOwnerCompanyName: 'Reliance Cargo',
+                listingAskingPrice: 60000,
+                offeredAmount: 55000,
+                latestCounterAmount: 58000,
+                latestCounterRemarks: 'Final rate with toll',
+                status: OfferStatus.COUNTERED,
+              ),
+            ]
+            ..outgoingBookingsToReturn = [
+              MarketplaceBookingModel(
+                id: 401,
+                bookingNumber: 'BK-0401',
+                originCity: 'Pune',
+                destinationCity: 'Delhi',
+                listingOwnerCompanyName: 'NorthStar Carriers',
+                agreedFreight: 72000,
+                proposedFreight: 72000,
+                requestedCapacity: 20,
+                bookingStatus: BookingStatus.PENDING_APPROVAL,
+              ),
+            ]
+            ..incomingBookingsToReturn = [
+              MarketplaceBookingModel(
+                id: 501,
+                bookingNumber: 'BK-0501',
+                originCity: 'Surat',
+                destinationCity: 'Jaipur',
+                requestedByCompanyName: 'Gujarat Textiles',
+                agreedFreight: 45000,
+                proposedFreight: 45000,
+                requestedCapacity: 16,
+                bookingStatus: BookingStatus.PENDING_APPROVAL,
+              ),
+            ];
+
+          final hubController = MarketplaceHubController(service: fakeService);
+
+          await tester.pumpWidget(
+            GetMaterialApp(
+              theme: ThemeData(splashFactory: InkRipple.splashFactory),
+              home: MarketplaceHubScreen(hubController: hubController),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          // Switch to My Activity tab
+          await tester.tap(find.text('My Activity'));
+          await tester.pumpAndSettle();
+
+          // 1. My Bids sub-tab is active by default
+          expect(find.text('Mumbai → Bangalore'), findsOneWidget);
+          expect(find.textContaining('Latest Counter-Offer:'), findsOneWidget);
+          expect(find.text('Accept Counter'), findsOneWidget);
+
+          // 2. Switch to My Booking Requests sub-tab
+          await tester.tap(find.textContaining('My Booking Requests'));
+          await tester.pumpAndSettle();
+          expect(find.text('Pune → Delhi'), findsOneWidget);
+          expect(find.text('PENDING APPROVAL'), findsOneWidget);
+
+          // 3. Switch to Incoming Requests sub-tab
+          await tester.tap(find.textContaining('Incoming Requests'));
+          await tester.pumpAndSettle();
+          expect(find.text('Surat → Jaipur'), findsOneWidget);
+          expect(find.text('Gujarat Textiles'), findsOneWidget);
+          expect(find.text('Accept'), findsOneWidget);
+
+          // Trigger Accept on the incoming booking request
+          await tester.tap(find.text('Accept'));
+          await tester.pump(const Duration(seconds: 5));
+          await tester.pumpAndSettle();
+          expect(fakeService.acceptedBookingId, equals(501));
+        },
+      );
+
+      test(
+        'LocationService calculates Haversine distance and resolves Indian city coordinates',
+        () {
+          final dist = LocationService.estimateCityDistanceKm(
+            originCity: 'Pune',
+            destCity: 'Ahmedabad',
+          );
+          expect(dist, isNotNull);
+          expect(dist!, greaterThan(450));
+          expect(dist, lessThan(600));
+          expect(
+            LocationService.formatDistanceKm(dist),
+            startsWith('Approx. '),
+          );
+          expect(LocationService.formatDistanceKm(dist), endsWith(' km'));
+        },
+      );
+
+      testWidgets(
+        'CityAutocompleteField populates city and triggers onLocationSelected with coordinates',
+        (tester) async {
+          final ctrl = TextEditingController();
+          LocationSuggestion? selected;
+
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: CityAutocompleteField(
+                  label: 'Origin City',
+                  hint: 'Enter city',
+                  controller: ctrl,
+                  debounceDuration: const Duration(milliseconds: 10),
+                  suggestionsFetcher: (query) async => [
+                    LocationSuggestion(
+                      city: 'Pune',
+                      state: 'Maharashtra',
+                      country: 'India',
+                      displayName: 'Pune, Maharashtra, India',
+                      latitude: 18.5204,
+                      longitude: 73.8567,
+                    ),
+                  ],
+                  onLocationSelected: (loc) => selected = loc,
+                ),
+              ),
+            ),
+          );
+
+          await tester.enterText(find.byType(TextFormField), 'Pun');
+          await tester.pump(const Duration(milliseconds: 50));
+          await tester.pumpAndSettle();
+
+          expect(find.text('Pune, Maharashtra, India'), findsOneWidget);
+          await tester.tap(find.text('Pune, Maharashtra, India'));
+          await tester.pumpAndSettle();
+
+          expect(ctrl.text, equals('Pune'));
+          expect(selected, isNotNull);
+          expect(selected!.state, equals('Maharashtra'));
+          expect(selected!.latitude, closeTo(18.5204, 0.001));
+        },
+      );
+
+      test(
+        'MarketplaceService.searchTrucks sends 200km corridor query params (originLat, originLng, destinationLat, destinationLng, radiusKm)',
+        () async {
+          final fakeApi = _FakeApiRequest();
+          final service = MarketplaceService(api: fakeApi);
+
+          await service.searchTrucks(
+            currentCity: 'Pune',
+            routeTo: 'Ahmedabad',
+            originLat: 18.5204,
+            originLng: 73.8567,
+            destinationLat: 23.0225,
+            destinationLng: 72.5714,
+            radiusKm: 200.0,
+          );
+
+          expect(fakeApi.getCallCount, equals(1));
+          expect(fakeApi.lastGetUrl, equals(Urls.marketplaceTrucks));
+          expect(fakeApi.lastGetQueryParams, isNotNull);
+          expect(fakeApi.lastGetQueryParams!['currentCity'], equals('Pune'));
+          expect(fakeApi.lastGetQueryParams!['routeTo'], equals('Ahmedabad'));
+          expect(fakeApi.lastGetQueryParams!['originLat'], equals(18.5204));
+          expect(fakeApi.lastGetQueryParams!['originLng'], equals(73.8567));
+          expect(
+            fakeApi.lastGetQueryParams!['destinationLat'],
+            equals(23.0225),
+          );
+          expect(
+            fakeApi.lastGetQueryParams!['destinationLng'],
+            equals(72.5714),
+          );
+          expect(fakeApi.lastGetQueryParams!['radiusKm'], equals(200.0));
+        },
+      );
+    },
+  );
 }

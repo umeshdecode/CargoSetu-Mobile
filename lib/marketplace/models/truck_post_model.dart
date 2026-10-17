@@ -16,7 +16,14 @@ class TruckPostModel {
   final double? currentLng;
   final String? availableFrom;
   final String? availableTo;
+  final String? routeFrom;
+  final String? routeFromState;
+  final double? routeFromLat;
+  final double? routeFromLng;
   final String? routeTo;
+  final String? routeToState;
+  final double? routeToLat;
+  final double? routeToLng;
   final String? returnRoute;
   final double? availableCapacity;
   final CapacityUnit capacityUnit;
@@ -35,6 +42,11 @@ class TruckPostModel {
   final String? verificationStatus;
   final double? overallRating;
   final int? completedTrips;
+  final double? routeDistanceKm;
+  final double? distanceFromOriginKm;
+  final double? distanceFromDestinationKm;
+  final double? distanceFromCorridorKm;
+  final String? distanceType;
   final String? createdAt;
 
   TruckPostModel({
@@ -53,7 +65,14 @@ class TruckPostModel {
     this.currentLng,
     this.availableFrom,
     this.availableTo,
+    this.routeFrom,
+    this.routeFromState,
+    this.routeFromLat,
+    this.routeFromLng,
     this.routeTo,
+    this.routeToState,
+    this.routeToLat,
+    this.routeToLng,
     this.returnRoute,
     this.availableCapacity,
     this.capacityUnit = CapacityUnit.TONNE,
@@ -72,19 +91,24 @@ class TruckPostModel {
     this.verificationStatus,
     this.overallRating,
     this.completedTrips,
+    this.routeDistanceKm,
+    this.distanceFromOriginKm,
+    this.distanceFromDestinationKm,
+    this.distanceFromCorridorKm,
+    this.distanceType,
     this.createdAt,
   });
 
   factory TruckPostModel.fromJson(Map<String, dynamic> json) {
     return TruckPostModel(
-      id: json['id'] as int?,
-      listingId: json['listingId'] as int?,
+      id: (json['id'] as num?)?.toInt(),
+      listingId: (json['listingId'] as num?)?.toInt(),
       listingNumber: json['listingNumber']?.toString(),
-      companyId: json['companyId'] as int?,
-      postedByStaffId: json['postedByStaffId'] as int?,
+      companyId: (json['companyId'] as num?)?.toInt(),
+      postedByStaffId: (json['postedByStaffId'] as num?)?.toInt(),
       status: ListingStatus.fromString(json['status']?.toString()),
-      vehicleId: json['vehicleId'] as int?,
-      driverId: json['driverId'] as int?,
+      vehicleId: (json['vehicleId'] as num?)?.toInt(),
+      driverId: (json['driverId'] as num?)?.toInt(),
       currentCity: json['currentCity']?.toString() ?? '',
       currentState: json['currentState']?.toString(),
       currentPincode: json['currentPincode']?.toString(),
@@ -92,7 +116,14 @@ class TruckPostModel {
       currentLng: (json['currentLng'] as num?)?.toDouble(),
       availableFrom: json['availableFrom']?.toString(),
       availableTo: json['availableTo']?.toString(),
+      routeFrom: json['routeFrom']?.toString(),
+      routeFromState: json['routeFromState']?.toString(),
+      routeFromLat: (json['routeFromLat'] as num?)?.toDouble(),
+      routeFromLng: (json['routeFromLng'] as num?)?.toDouble(),
       routeTo: json['routeTo']?.toString(),
+      routeToState: json['routeToState']?.toString(),
+      routeToLat: (json['routeToLat'] as num?)?.toDouble(),
+      routeToLng: (json['routeToLng'] as num?)?.toDouble(),
       returnRoute: json['returnRoute']?.toString(),
       availableCapacity: (json['availableCapacity'] as num?)?.toDouble(),
       capacityUnit: CapacityUnit.fromString(json['capacityUnit']?.toString()),
@@ -110,7 +141,14 @@ class TruckPostModel {
       driverPhone: json['driverPhone']?.toString(),
       verificationStatus: json['verificationStatus']?.toString(),
       overallRating: (json['overallRating'] as num?)?.toDouble(),
-      completedTrips: json['completedTrips'] as int?,
+      completedTrips: (json['completedTrips'] as num?)?.toInt(),
+      routeDistanceKm: (json['routeDistanceKm'] as num?)?.toDouble(),
+      distanceFromOriginKm: (json['distanceFromOriginKm'] as num?)?.toDouble(),
+      distanceFromDestinationKm: (json['distanceFromDestinationKm'] as num?)
+          ?.toDouble(),
+      distanceFromCorridorKm: (json['distanceFromCorridorKm'] as num?)
+          ?.toDouble(),
+      distanceType: json['distanceType']?.toString(),
       createdAt: json['createdAt']?.toString(),
     );
   }
@@ -125,10 +163,19 @@ class TruckPostModel {
       if (currentPincode != null) 'currentPincode': currentPincode,
       if (currentLat != null) 'currentLat': currentLat,
       if (currentLng != null) 'currentLng': currentLng,
-      'routeFrom': currentCity,
+      'routeFrom': routeFrom ?? currentCity,
+      if (routeFromState != null || currentState != null)
+        'routeFromState': routeFromState ?? currentState,
+      if (routeFromLat != null || currentLat != null)
+        'routeFromLat': routeFromLat ?? currentLat,
+      if (routeFromLng != null || currentLng != null)
+        'routeFromLng': routeFromLng ?? currentLng,
       if (availableFrom != null) 'availableFrom': availableFrom,
       if (availableTo != null) 'availableTo': availableTo,
       if (routeTo != null) 'routeTo': routeTo,
+      if (routeToState != null) 'routeToState': routeToState,
+      if (routeToLat != null) 'routeToLat': routeToLat,
+      if (routeToLng != null) 'routeToLng': routeToLng,
       if (returnRoute != null) 'returnRoute': returnRoute,
       'totalCapacity': passingCapacityTons ?? availableCapacity ?? 10.0,
       'availableCapacity': availableCapacity ?? 10.0,

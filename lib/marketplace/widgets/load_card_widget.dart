@@ -1,3 +1,4 @@
+import 'package:cargo_setu/services/location_service.dart';
 import 'package:cargo_setu/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -26,6 +27,16 @@ class LoadCardWidget extends StatelessWidget {
       symbol: '₹',
       decimalDigits: 0,
     );
+    final distKm =
+        load.routeDistanceKm ??
+        LocationService.estimateCityDistanceKm(
+          originLat: load.originLat,
+          originLng: load.originLng,
+          originCity: load.originCity,
+          destLat: load.destinationLat,
+          destLng: load.destinationLng,
+          destCity: load.destinationCity,
+        );
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -59,7 +70,10 @@ class LoadCardWidget extends StatelessWidget {
                       child: Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.primaryBlueLight,
                               borderRadius: BorderRadius.circular(6),
@@ -74,7 +88,8 @@ class LoadCardWidget extends StatelessWidget {
                               ),
                             ),
                           ),
-                          if (load.companyName != null && load.companyName!.isNotEmpty) ...[
+                          if (load.companyName != null &&
+                              load.companyName!.isNotEmpty) ...[
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
@@ -105,14 +120,22 @@ class LoadCardWidget extends StatelessWidget {
                   children: [
                     Column(
                       children: [
-                        const Icon(Icons.circle, size: 10, color: Color(0xFF10B981)),
+                        const Icon(
+                          Icons.circle,
+                          size: 10,
+                          color: Color(0xFF10B981),
+                        ),
                         Container(
                           width: 1.5,
                           height: 24,
                           color: const Color(0xFFCBD5E1),
                           margin: const EdgeInsets.symmetric(vertical: 2),
                         ),
-                        const Icon(Icons.location_on, size: 12, color: Color(0xFFEF4444)),
+                        const Icon(
+                          Icons.location_on,
+                          size: 12,
+                          color: Color(0xFFEF4444),
+                        ),
                       ],
                     ),
                     const SizedBox(width: 12),
@@ -121,7 +144,10 @@ class LoadCardWidget extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            load.originCity,
+                            load.originState != null &&
+                                    load.originState!.isNotEmpty
+                                ? '${load.originCity}, ${load.originState}'
+                                : load.originCity,
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
@@ -130,7 +156,10 @@ class LoadCardWidget extends StatelessWidget {
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            load.destinationCity,
+                            load.destinationState != null &&
+                                    load.destinationState!.isNotEmpty
+                                ? '${load.destinationCity}, ${load.destinationState}'
+                                : load.destinationCity,
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
@@ -145,7 +174,8 @@ class LoadCardWidget extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        if (load.askingPrice != null && load.askingPrice! > 0) ...[
+                        if (load.askingPrice != null &&
+                            load.askingPrice! > 0) ...[
                           Text(
                             currencyFormatter.format(load.askingPrice),
                             style: const TextStyle(
@@ -155,7 +185,9 @@ class LoadCardWidget extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            load.priceType == 'PER_TON' ? 'per ton' : 'Fixed Freight',
+                            load.priceType == 'PER_TON'
+                                ? 'per ton'
+                                : 'Fixed Freight',
                             style: const TextStyle(
                               fontSize: 11,
                               color: Color(0xFF64748B),
@@ -164,7 +196,10 @@ class LoadCardWidget extends StatelessWidget {
                           ),
                         ] else ...[
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
                               color: const Color(0xFFF1F5F9),
                               borderRadius: BorderRadius.circular(6),
@@ -186,11 +221,16 @@ class LoadCardWidget extends StatelessWidget {
 
                 const SizedBox(height: 14),
 
-                // ─── Specs Pills: Weight, Cargo Type, Truck Type ───
+                // ─── Specs Pills: Distance, Weight, Cargo Type, Truck Type ───
                 Wrap(
                   spacing: 8,
                   runSpacing: 6,
                   children: [
+                    if (distKm != null && distKm > 0)
+                      _specPill(
+                        Icons.route_outlined,
+                        LocationService.formatDistanceKm(distKm),
+                      ),
                     if (load.weight != null)
                       _specPill(
                         Icons.scale_outlined,
@@ -200,7 +240,8 @@ class LoadCardWidget extends StatelessWidget {
                       Icons.inventory_2_outlined,
                       load.cargoType.displayName,
                     ),
-                    if (load.requiredTruckType != null && load.requiredTruckType!.isNotEmpty)
+                    if (load.requiredTruckType != null &&
+                        load.requiredTruckType!.isNotEmpty)
                       _specPill(
                         Icons.local_shipping_outlined,
                         load.requiredTruckType!,
@@ -218,7 +259,11 @@ class LoadCardWidget extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.event_outlined, size: 14, color: Color(0xFF64748B)),
+                        const Icon(
+                          Icons.event_outlined,
+                          size: 14,
+                          color: Color(0xFF64748B),
+                        ),
                         const SizedBox(width: 5),
                         Text(
                           load.pickupFrom != null
@@ -270,7 +315,8 @@ class LoadCardWidget extends StatelessWidget {
     if (status == ListingStatus.PUBLISHED) {
       bg = const Color(0xFFECFDF5);
       fg = const Color(0xFF059669);
-    } else if (status == ListingStatus.NEGOTIATING || status == ListingStatus.MATCHED) {
+    } else if (status == ListingStatus.NEGOTIATING ||
+        status == ListingStatus.MATCHED) {
       bg = const Color(0xFFEFF6FF);
       fg = const Color(0xFF2563EB);
     } else if (status == ListingStatus.BOOKED) {
@@ -286,11 +332,7 @@ class LoadCardWidget extends StatelessWidget {
       ),
       child: Text(
         status.displayName,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: fg,
-        ),
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: fg),
       ),
     );
   }

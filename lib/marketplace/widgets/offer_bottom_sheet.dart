@@ -10,7 +10,13 @@ class OfferBottomSheet extends StatefulWidget {
   final String title;
   final String routeSubtitle;
   final double? targetPrice;
-  final Function(double amount, int advancePct, PaymentTermType terms, String? remarks) onSubmit;
+  final Function(
+    double amount,
+    int advancePct,
+    PaymentTermType terms,
+    String? remarks,
+  )
+  onSubmit;
 
   const OfferBottomSheet({
     super.key,
@@ -25,7 +31,13 @@ class OfferBottomSheet extends StatefulWidget {
     required String title,
     required String routeSubtitle,
     double? targetPrice,
-    required Function(double amount, int advancePct, PaymentTermType terms, String? remarks) onSubmit,
+    required Function(
+      double amount,
+      int advancePct,
+      PaymentTermType terms,
+      String? remarks,
+    )
+    onSubmit,
   }) {
     return showModalBottomSheet(
       context: context,
@@ -163,7 +175,10 @@ class _OfferBottomSheetState extends State<OfferBottomSheet> {
                     ),
                   ),
                 ),
-                prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                prefixIconConstraints: const BoxConstraints(
+                  minWidth: 0,
+                  minHeight: 0,
+                ),
                 hintText: '0',
                 filled: true,
                 fillColor: const Color(0xFFF8FAFC),
@@ -177,7 +192,10 @@ class _OfferBottomSheetState extends State<OfferBottomSheet> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.primaryBlue, width: 1.5),
+                  borderSide: const BorderSide(
+                    color: AppColors.primaryBlue,
+                    width: 1.5,
+                  ),
                 ),
               ),
             ),
@@ -211,7 +229,9 @@ class _OfferBottomSheetState extends State<OfferBottomSheet> {
                       labelStyle: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: isSelected ? Colors.white : const Color(0xFF475569),
+                        color: isSelected
+                            ? Colors.white
+                            : const Color(0xFF475569),
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -245,7 +265,10 @@ class _OfferBottomSheetState extends State<OfferBottomSheet> {
                 child: DropdownButton<PaymentTermType>(
                   value: _selectedTerms,
                   isExpanded: true,
-                  icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down,
+                    color: Color(0xFF64748B),
+                  ),
                   items: PaymentTermType.values.map((term) {
                     return DropdownMenuItem(
                       value: term,
@@ -283,7 +306,10 @@ class _OfferBottomSheetState extends State<OfferBottomSheet> {
               maxLines: 2,
               decoration: InputDecoration(
                 hintText: 'e.g., Toll included, loading by shipper',
-                hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                hintStyle: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF94A3B8),
+                ),
                 filled: true,
                 fillColor: const Color(0xFFF8FAFC),
                 border: OutlineInputBorder(
@@ -305,7 +331,8 @@ class _OfferBottomSheetState extends State<OfferBottomSheet> {
               height: 48,
               child: ElevatedButton(
                 onPressed: () {
-                  final amount = double.tryParse(_amountController.text.trim()) ?? 0.0;
+                  final amount =
+                      double.tryParse(_amountController.text.trim()) ?? 0.0;
                   if (amount <= 0) {
                     Get.snackbar(
                       'Invalid Amount',
@@ -321,7 +348,9 @@ class _OfferBottomSheetState extends State<OfferBottomSheet> {
                     amount,
                     _selectedAdvance,
                     _selectedTerms,
-                    _remarksController.text.trim().isEmpty ? null : _remarksController.text.trim(),
+                    _remarksController.text.trim().isEmpty
+                        ? null
+                        : _remarksController.text.trim(),
                   );
                 },
                 style: ElevatedButton.styleFrom(
@@ -334,10 +363,7 @@ class _OfferBottomSheetState extends State<OfferBottomSheet> {
                 ),
                 child: const Text(
                   'Confirm & Submit Bid',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                 ),
               ),
             ),

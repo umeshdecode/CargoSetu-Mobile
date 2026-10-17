@@ -1,3 +1,4 @@
+import 'package:cargo_setu/services/location_service.dart';
 import 'package:cargo_setu/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -5,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../models/marketplace_enums.dart';
 import '../models/truck_post_model.dart';
 import '../services/marketplace_service.dart';
+import '../widgets/city_autocomplete_field.dart';
 import '../../vehicle_management/services/vehicle_service.dart';
 import '../../vehicle_management/models/vehicle_model.dart';
 import '../../vehicle_management/models/driver_model.dart';
@@ -16,11 +18,7 @@ class CreateTruckPostScreen extends StatefulWidget {
   final MarketplaceService? service;
   final VehicleService? vehicleService;
 
-  const CreateTruckPostScreen({
-    super.key,
-    this.service,
-    this.vehicleService,
-  });
+  const CreateTruckPostScreen({super.key, this.service, this.vehicleService});
 
   @override
   State<CreateTruckPostScreen> createState() => _CreateTruckPostScreenState();
@@ -41,8 +39,22 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
   // Location & Routes
   final _currentCityCtrl = TextEditingController();
   final _currentStateCtrl = TextEditingController();
+  double? _currentLat;
+  double? _currentLng;
   final _routeToCtrl = TextEditingController();
+  final _routeToStateCtrl = TextEditingController();
+  double? _routeToLat;
+  double? _routeToLng;
   final _returnRouteCtrl = TextEditingController();
+
+  double? get _estimatedDistanceKm => LocationService.estimateCityDistanceKm(
+    originLat: _currentLat,
+    originLng: _currentLng,
+    originCity: _currentCityCtrl.text,
+    destLat: _routeToLat,
+    destLng: _routeToLng,
+    destCity: _routeToCtrl.text,
+  );
 
   // Availability Dates
   DateTime? _availableFrom = DateTime.now();
@@ -186,7 +198,9 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
             _passingCapacityCtrl.text = tons;
             _capacityCtrl.text = tons;
           }
-          if (v.currentLocation != null && v.currentLocation!.isNotEmpty && _currentCityCtrl.text.isEmpty) {
+          if (v.currentLocation != null &&
+              v.currentLocation!.isNotEmpty &&
+              _currentCityCtrl.text.isEmpty) {
             _currentCityCtrl.text = v.currentLocation!;
           }
         }
@@ -213,6 +227,7 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
     _currentCityCtrl.dispose();
     _currentStateCtrl.dispose();
     _routeToCtrl.dispose();
+    _routeToStateCtrl.dispose();
     _returnRouteCtrl.dispose();
     _capacityCtrl.dispose();
     _vehicleNumberCtrl.dispose();
@@ -306,19 +321,40 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
   }
 
   Widget _buildLocationSection() {
+    final distanceKm = _estimatedDistanceKm;
     return _buildCard(
       title: 'Current Location & Preferred Route',
       icon: Icons.location_on_outlined,
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               flex: 3,
-              child: _buildTextField(
+              child: CityAutocompleteField(
                 label: 'Current City *',
                 hint: 'e.g. Pune',
                 controller: _currentCityCtrl,
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                prefixIcon: const Icon(
+                  Icons.my_location,
+                  size: 14,
+                  color: Color(0xFF10B981),
+                ),
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Required' : null,
+                onChanged: (_) => setState(() {
+                  _currentLat = null;
+                  _currentLng = null;
+                }),
+                onLocationSelected: (loc) {
+                  setState(() {
+                    if (loc.state.isNotEmpty) {
+                      _currentStateCtrl.text = loc.state;
+                    }
+                    _currentLat = loc.latitude;
+                    _currentLng = loc.longitude;
+                  });
+                },
               ),
             ),
             const SizedBox(width: 12),
@@ -333,12 +369,98 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        _buildTextField(
-          label: 'Preferred Destination / Route To *',
-          hint: 'e.g. Ahmedabad, Delhi, or Any North Route',
-          controller: _routeToCtrl,
-          validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 3,
+              child: CityAutocompleteField(
+                label: 'Preferred Destination / Route To *',
+                hint: 'e.g. Ahmedabad, Delhi',
+                controller: _routeToCtrl,
+                prefixIcon: const Icon(
+                  Icons.location_on,
+                  size: 14,
+                  color: Color(0xFFEF4444),
+                ),
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Required' : null,
+                onChanged: (_) => setState(() {
+                  _routeToLat = null;
+                  _routeToLng = null;
+                }),
+                onLocationSelected: (loc) {
+                  setState(() {
+                    if (loc.state.isNotEmpty) {
+                      _routeToStateCtrl.text = loc.state;
+                    }
+                    _routeToLat = loc.latitude;
+                    _routeToLng = loc.longitude;
+                  });
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 2,
+              child: _buildTextField(
+                label: 'Dest. State',
+                hint: 'e.g. Gujarat',
+                controller: _routeToStateCtrl,
+              ),
+            ),
+          ],
         ),
+        if (distanceKm != null && distanceKm > 0) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFECFDF5),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFA7F3D0)),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.route_outlined,
+                  size: 18,
+                  color: Color(0xFF059669),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${_currentCityCtrl.text.trim()} → ${_routeToCtrl.text.trim()}',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF065F46),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    LocationService.formatDistanceKm(distanceKm),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF059669),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         _buildTextField(
           label: 'Return / Intermediate Route (Optional)',
@@ -395,7 +517,11 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.error_outline, color: Color(0xFFDC2626), size: 18),
+                const Icon(
+                  Icons.error_outline,
+                  color: Color(0xFFDC2626),
+                  size: 18,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -426,7 +552,11 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 18),
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Color(0xFFD97706),
+                  size: 18,
+                ),
                 const SizedBox(width: 8),
                 const Expanded(
                   child: Text(
@@ -451,7 +581,8 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
           _buildDropdown<int?>(
             label: 'Select Vehicle from Your Fleet *',
             value: _selectedVehicleId,
-            validator: (val) => val == null ? 'Please select a vehicle from your fleet' : null,
+            validator: (val) =>
+                val == null ? 'Please select a vehicle from your fleet' : null,
             items: [
               const DropdownMenuItem<int?>(
                 value: null,
@@ -479,7 +610,9 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
                 label: 'Available Capacity *',
                 hint: 'e.g. 18.5',
                 controller: _capacityCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return 'Required';
                   if (double.tryParse(v.trim()) == null) return 'Invalid';
@@ -664,7 +797,11 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
             : const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+                  Icon(
+                    Icons.check_circle_outline,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     'Publish Truck Availability',
@@ -754,7 +891,10 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
             hintText: hint,
             prefixText: prefixText,
             hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 11,
+            ),
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
             border: OutlineInputBorder(
@@ -767,7 +907,10 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+              borderSide: const BorderSide(
+                color: AppColors.primary,
+                width: 1.5,
+              ),
             ),
           ),
         ),
@@ -814,7 +957,10 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
           validator: validator,
           style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A)),
           decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
             border: OutlineInputBorder(
@@ -827,7 +973,10 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+              borderSide: const BorderSide(
+                color: AppColors.primary,
+                width: 1.5,
+              ),
             ),
           ),
         ),
@@ -840,7 +989,9 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
     required DateTime? date,
     required VoidCallback onTap,
   }) {
-    final text = date != null ? DateFormat('dd MMM yyyy').format(date) : 'Select date';
+    final text = date != null
+        ? DateFormat('dd MMM yyyy').format(date)
+        : 'Select date';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -868,7 +1019,9 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
                 Icon(
                   Icons.calendar_today_outlined,
                   size: 16,
-                  color: date != null ? AppColors.primary : const Color(0xFF94A3B8),
+                  color: date != null
+                      ? AppColors.primary
+                      : const Color(0xFF94A3B8),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -876,8 +1029,12 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
                     text,
                     style: TextStyle(
                       fontSize: 13,
-                      color: date != null ? const Color(0xFF0F172A) : const Color(0xFF94A3B8),
-                      fontWeight: date != null ? FontWeight.w600 : FontWeight.normal,
+                      color: date != null
+                          ? const Color(0xFF0F172A)
+                          : const Color(0xFF94A3B8),
+                      fontWeight: date != null
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                     ),
                   ),
                 ),
@@ -893,7 +1050,9 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
-      initialDate: isFrom ? (_availableFrom ?? now) : (_availableTo ?? _availableFrom ?? now),
+      initialDate: isFrom
+          ? (_availableFrom ?? now)
+          : (_availableTo ?? _availableFrom ?? now),
       firstDate: now,
       lastDate: now.add(const Duration(days: 90)),
       builder: (context, child) {
@@ -928,7 +1087,9 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
     if (_selectedVehicleId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select a vehicle from your fleet before publishing.'),
+          content: Text(
+            'Please select a vehicle from your fleet before publishing.',
+          ),
         ),
       );
       return;
@@ -950,7 +1111,9 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      final availFromStr = DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(_availableFrom!);
+      final availFromStr = DateFormat(
+        "yyyy-MM-dd'T'HH:mm:ss",
+      ).format(_availableFrom!);
       final availToStr = _availableTo != null
           ? DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(_availableTo!)
           : null;
@@ -959,21 +1122,39 @@ class _CreateTruckPostScreenState extends State<CreateTruckPostScreen> {
         vehicleId: _selectedVehicleId,
         driverId: _selectedDriverId,
         currentCity: _currentCityCtrl.text.trim(),
-        currentState: _currentStateCtrl.text.trim().isNotEmpty ? _currentStateCtrl.text.trim() : null,
+        currentState: _currentStateCtrl.text.trim().isNotEmpty
+            ? _currentStateCtrl.text.trim()
+            : null,
+        currentLat: _currentLat,
+        currentLng: _currentLng,
         routeTo: _routeToCtrl.text.trim(),
-        returnRoute: _returnRouteCtrl.text.trim().isNotEmpty ? _returnRouteCtrl.text.trim() : null,
+        routeToState: _routeToStateCtrl.text.trim().isNotEmpty
+            ? _routeToStateCtrl.text.trim()
+            : null,
+        routeToLat: _routeToLat,
+        routeToLng: _routeToLng,
+        routeDistanceKm: _estimatedDistanceKm,
+        returnRoute: _returnRouteCtrl.text.trim().isNotEmpty
+            ? _returnRouteCtrl.text.trim()
+            : null,
         availableFrom: availFromStr,
         availableTo: availToStr,
         availableCapacity: double.tryParse(_capacityCtrl.text.trim()),
         capacityUnit: _capacityUnit,
         truckStatus: 'EMPTY_STANDING',
-        vehicleNumber: _vehicleNumberCtrl.text.trim().isNotEmpty ? _vehicleNumberCtrl.text.trim() : null,
+        vehicleNumber: _vehicleNumberCtrl.text.trim().isNotEmpty
+            ? _vehicleNumberCtrl.text.trim()
+            : null,
         truckType: _truckType,
         bodyType: _bodyType,
         truckLengthFeet: double.tryParse(_lengthFeetCtrl.text.trim()),
         passingCapacityTons: double.tryParse(_passingCapacityCtrl.text.trim()),
-        driverName: _driverNameCtrl.text.trim().isNotEmpty ? _driverNameCtrl.text.trim() : null,
-        driverPhone: _driverPhoneCtrl.text.trim().isNotEmpty ? _driverPhoneCtrl.text.trim() : null,
+        driverName: _driverNameCtrl.text.trim().isNotEmpty
+            ? _driverNameCtrl.text.trim()
+            : null,
+        driverPhone: _driverPhoneCtrl.text.trim().isNotEmpty
+            ? _driverPhoneCtrl.text.trim()
+            : null,
         pricePerKm: double.tryParse(_ratePerKmCtrl.text.trim()),
         minimumPrice: double.tryParse(_minPriceCtrl.text.trim()),
       );

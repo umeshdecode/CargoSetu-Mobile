@@ -38,6 +38,8 @@ class LoadPostModel {
   final int? advancePercentage;
   final String? companyName;
   final String? verificationStatus;
+  final double? routeDistanceKm;
+  final String? routeDistanceType;
   final String? createdAt;
 
   LoadPostModel({
@@ -78,16 +80,18 @@ class LoadPostModel {
     this.advancePercentage,
     this.companyName,
     this.verificationStatus,
+    this.routeDistanceKm,
+    this.routeDistanceType,
     this.createdAt,
   });
 
   factory LoadPostModel.fromJson(Map<String, dynamic> json) {
     return LoadPostModel(
-      id: json['id'] as int?,
-      listingId: json['listingId'] as int?,
+      id: (json['id'] as num?)?.toInt(),
+      listingId: (json['listingId'] as num?)?.toInt(),
       listingNumber: json['listingNumber']?.toString(),
-      companyId: json['companyId'] as int?,
-      postedByStaffId: json['postedByStaffId'] as int?,
+      companyId: (json['companyId'] as num?)?.toInt(),
+      postedByStaffId: (json['postedByStaffId'] as num?)?.toInt(),
       status: ListingStatus.fromString(json['status']?.toString()),
       originCity: json['originCity']?.toString() ?? '',
       originAddress: json['originAddress']?.toString(),
@@ -110,16 +114,20 @@ class LoadPostModel {
       weight: (json['weight'] as num?)?.toDouble(),
       weightUnit: CapacityUnit.fromString(json['weightUnit']?.toString()),
       volume: (json['volume'] as num?)?.toDouble(),
-      packageCount: json['packageCount'] as int?,
+      packageCount: (json['packageCount'] as num?)?.toInt(),
       requiredTruckType: json['requiredTruckType']?.toString(),
       requiredTruckLength: (json['requiredTruckLength'] as num?)?.toDouble(),
       requiredBodyType: json['requiredBodyType']?.toString(),
       priceType: json['priceType']?.toString(),
       askingPrice: (json['askingPrice'] as num?)?.toDouble(),
-      paymentTerms: PaymentTermType.fromString(json['paymentTerms']?.toString()),
-      advancePercentage: json['advancePercentage'] as int?,
+      paymentTerms: PaymentTermType.fromString(
+        json['paymentTerms']?.toString(),
+      ),
+      advancePercentage: (json['advancePercentage'] as num?)?.toInt(),
       companyName: json['companyName']?.toString(),
       verificationStatus: json['verificationStatus']?.toString(),
+      routeDistanceKm: (json['routeDistanceKm'] as num?)?.toDouble(),
+      routeDistanceType: json['routeDistanceType']?.toString(),
       createdAt: json['createdAt']?.toString(),
     );
   }
@@ -150,7 +158,8 @@ class LoadPostModel {
       if (volume != null) 'volume': volume,
       if (packageCount != null) 'packageCount': packageCount,
       if (requiredTruckType != null) 'requiredTruckType': requiredTruckType,
-      if (requiredTruckLength != null) 'requiredTruckLength': requiredTruckLength,
+      if (requiredTruckLength != null)
+        'requiredTruckLength': requiredTruckLength,
       if (requiredBodyType != null) 'requiredBodyType': requiredBodyType,
       if (priceType != null) 'priceType': priceType,
       if (askingPrice != null) 'askingPrice': askingPrice,

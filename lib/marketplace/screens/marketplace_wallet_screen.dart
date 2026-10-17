@@ -12,7 +12,8 @@ class MarketplaceWalletScreen extends StatefulWidget {
   const MarketplaceWalletScreen({super.key});
 
   @override
-  State<MarketplaceWalletScreen> createState() => _MarketplaceWalletScreenState();
+  State<MarketplaceWalletScreen> createState() =>
+      _MarketplaceWalletScreenState();
 }
 
 class _MarketplaceWalletScreenState extends State<MarketplaceWalletScreen> {
@@ -39,7 +40,11 @@ class _MarketplaceWalletScreenState extends State<MarketplaceWalletScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormatter = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+    final currencyFormatter = NumberFormat.currency(
+      locale: 'en_IN',
+      symbol: '₹',
+      decimalDigits: 0,
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -125,7 +130,11 @@ class _MarketplaceWalletScreenState extends State<MarketplaceWalletScreen> {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.account_balance_wallet_outlined, color: Colors.white70, size: 18),
+                  Icon(
+                    Icons.account_balance_wallet_outlined,
+                    color: Colors.white70,
+                    size: 18,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     'Total Ledger Balance',
@@ -276,13 +285,19 @@ class _MarketplaceWalletScreenState extends State<MarketplaceWalletScreen> {
           child: ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
             icon: const Icon(Icons.add, color: Colors.white, size: 18),
             label: const Text(
               'Add Advance Funds',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
             ),
             onPressed: () {
               Get.snackbar(
@@ -299,13 +314,23 @@ class _MarketplaceWalletScreenState extends State<MarketplaceWalletScreen> {
           child: OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: Color(0xFFCBD5E1)),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
-            icon: const Icon(Icons.account_balance, color: Color(0xFF0F172A), size: 18),
+            icon: const Icon(
+              Icons.account_balance,
+              color: Color(0xFF0F172A),
+              size: 18,
+            ),
             label: const Text(
               'Request Payout',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0F172A),
+              ),
             ),
             onPressed: () {
               Get.snackbar(
@@ -344,19 +369,22 @@ class _MarketplaceWalletScreenState extends State<MarketplaceWalletScreen> {
           _GuaranteeItem(
             icon: Icons.check_circle_outline,
             title: '100% Guaranteed Transporter Payment',
-            description: 'Transporters are guaranteed freight settlement once digital POD is submitted.',
+            description:
+                'Transporters are guaranteed freight settlement once digital POD is submitted.',
           ),
           SizedBox(height: 10),
           _GuaranteeItem(
             icon: Icons.security,
             title: 'Shipper Transit Protection',
-            description: 'Funds remain held securely if a vehicle fails to report or shipment is cancelled.',
+            description:
+                'Funds remain held securely if a vehicle fails to report or shipment is cancelled.',
           ),
           SizedBox(height: 10),
           _GuaranteeItem(
             icon: Icons.gavel,
             title: 'Dispute Arbitration',
-            description: 'CargoSetu arbitrates detention, shortages, and claims before releasing held funds.',
+            description:
+                'CargoSetu arbitrates detention, shortages, and claims before releasing held funds.',
           ),
         ],
       ),

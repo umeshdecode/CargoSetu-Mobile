@@ -96,9 +96,11 @@ class RatingReviewModel {
     return {
       'bookingId': bookingId,
       'overallRating': overallRating,
-      if (communicationRating != null) 'communicationRating': communicationRating,
+      if (communicationRating != null)
+        'communicationRating': communicationRating,
       if (punctualityRating != null) 'punctualityRating': punctualityRating,
-      if (professionalismRating != null) 'professionalismRating': professionalismRating,
+      if (professionalismRating != null)
+        'professionalismRating': professionalismRating,
       if (paymentRating != null) 'paymentRating': paymentRating,
       if (comment != null) 'comment': comment,
       if (tags != null) 'tags': tags,

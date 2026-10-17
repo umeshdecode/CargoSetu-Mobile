@@ -1,24 +1,47 @@
+import 'package:cargo_setu/services/location_service.dart';
 import 'package:cargo_setu/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'marketplace_chat_screen.dart';
+import 'my_bookings_screen.dart';
 import '../models/truck_post_model.dart';
 import '../models/marketplace_booking_model.dart';
 import '../models/marketplace_enums.dart';
 import '../services/marketplace_service.dart';
 
 /// Detailed view for an available truck post.
-/// Displays vehicle capacity, driver contact, route, and booking flow
+/// Displays vehicle capacity, driver contact, route distance, and booking request flow
 /// without revealing internal entity IDs.
-class TruckDetailScreen extends StatelessWidget {
+class TruckDetailScreen extends StatefulWidget {
   final TruckPostModel truck;
   final MarketplaceService? service;
 
   const TruckDetailScreen({super.key, required this.truck, this.service});
 
   @override
+  State<TruckDetailScreen> createState() => _TruckDetailScreenState();
+}
+
+class _TruckDetailScreenState extends State<TruckDetailScreen> {
+  bool _requestSent = false;
+
+  TruckPostModel get truck => widget.truck;
+  MarketplaceService? get service => widget.service;
+
+  @override
   Widget build(BuildContext context) {
+    final routeDistKm =
+        truck.routeDistanceKm ??
+        LocationService.estimateCityDistanceKm(
+          originLat: truck.currentLat,
+          originLng: truck.currentLng,
+          originCity: truck.currentCity,
+          destLat: truck.routeToLat,
+          destLng: truck.routeToLng,
+          destCity: truck.routeTo,
+        );
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
@@ -47,6 +70,75 @@ class TruckDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (_requestSent) ...[
+              Container(
+                padding: const EdgeInsets.all(14),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFBEB),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFDE68A)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.hourglass_top_rounded,
+                          color: Color(0xFFD97706),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Booking request sent. Waiting for transporter approval.',
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF92400E),
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF3C7),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            BookingStatus.PENDING_APPROVAL.displayName,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFFB45309),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: () =>
+                            Get.to(() => const MyBookingsScreen(initialTab: 0)),
+                        icon: const Icon(Icons.open_in_new, size: 15),
+                        label: const Text('View My Booking Requests'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFFB45309),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             // ─── Vehicle Header Card ───
             Container(
               padding: const EdgeInsets.all(18),
@@ -76,7 +168,8 @@ class TruckDetailScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          truck.vehicleNumber ?? (truck.truckType ?? 'Commercial Vehicle'),
+                          truck.vehicleNumber ??
+                              (truck.truckType ?? 'Commercial Vehicle'),
                           style: const TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w800,
@@ -97,14 +190,21 @@ class TruckDetailScreen extends StatelessWidget {
                   ),
                   if (truck.overallRating != null && truck.overallRating! > 0)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFEF3C7),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.star, size: 13, color: Color(0xFFD97706)),
+                          const Icon(
+                            Icons.star,
+                            size: 13,
+                            color: Color(0xFFD97706),
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             truck.overallRating!.toStringAsFixed(1),
@@ -131,7 +231,11 @@ class TruckDetailScreen extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.location_on, size: 16, color: Color(0xFF10B981)),
+                      const Icon(
+                        Icons.location_on,
+                        size: 16,
+                        color: Color(0xFF10B981),
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Column(
@@ -139,10 +243,16 @@ class TruckDetailScreen extends StatelessWidget {
                           children: [
                             const Text(
                               'Current Stationed City',
-                              style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: Color(0xFF64748B),
+                              ),
                             ),
                             Text(
-                              truck.currentCity,
+                              truck.currentState != null &&
+                                      truck.currentState!.isNotEmpty
+                                  ? '${truck.currentCity}, ${truck.currentState}'
+                                  : truck.currentCity,
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
@@ -160,7 +270,11 @@ class TruckDetailScreen extends StatelessWidget {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        const Icon(Icons.arrow_forward, size: 16, color: AppColors.primaryBlue),
+                        const Icon(
+                          Icons.arrow_forward,
+                          size: 16,
+                          color: AppColors.primaryBlue,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Column(
@@ -168,10 +282,16 @@ class TruckDetailScreen extends StatelessWidget {
                             children: [
                               const Text(
                                 'Target Route / Heading To',
-                                style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: Color(0xFF64748B),
+                                ),
                               ),
                               Text(
-                                truck.routeTo!,
+                                truck.routeToState != null &&
+                                        truck.routeToState!.isNotEmpty
+                                    ? '${truck.routeTo!}, ${truck.routeToState}'
+                                    : truck.routeTo!,
                                 style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
@@ -181,6 +301,39 @@ class TruckDetailScreen extends StatelessWidget {
                             ],
                           ),
                         ),
+                        if (routeDistKm != null && routeDistKm > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: const Color(0xFFBFDBFE),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.route_outlined,
+                                  size: 14,
+                                  color: AppColors.primaryBlue,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  LocationService.formatDistanceKm(routeDistKm),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.primaryBlue,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                       ],
                     ),
                   ],
@@ -220,12 +373,17 @@ class TruckDetailScreen extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: _infoPair('Body Type', truck.bodyType ?? 'Open Body'),
+                        child: _infoPair(
+                          'Body Type',
+                          truck.bodyType ?? 'Open Body',
+                        ),
                       ),
                       Expanded(
                         child: _infoPair(
                           'Length',
-                          truck.truckLengthFeet != null ? '${truck.truckLengthFeet} Ft' : 'Standard',
+                          truck.truckLengthFeet != null
+                              ? '${truck.truckLengthFeet} Ft'
+                              : 'Standard',
                         ),
                       ),
                     ],
@@ -280,7 +438,10 @@ class TruckDetailScreen extends StatelessWidget {
                         if (truck.driverPhone != null)
                           Text(
                             truck.driverPhone!,
-                            style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF64748B),
+                            ),
                           ),
                       ],
                     ),
@@ -295,7 +456,8 @@ class TruckDetailScreen extends StatelessWidget {
                           ),
                           tooltip: 'Chat with Operator / Driver',
                         ),
-                        if (truck.driverPhone != null && truck.driverPhone!.isNotEmpty) ...[
+                        if (truck.driverPhone != null &&
+                            truck.driverPhone!.isNotEmpty) ...[
                           const SizedBox(width: 8),
                           IconButton.filled(
                             onPressed: () => _makePhoneCall(truck.driverPhone),
@@ -315,7 +477,7 @@ class TruckDetailScreen extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            // ─── Book Capacity CTA ───
+            // ─── Request Capacity CTA ───
             Row(
               children: [
                 OutlinedButton.icon(
@@ -325,7 +487,10 @@ class TruckDetailScreen extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.primaryBlue,
                     side: const BorderSide(color: AppColors.primaryBlue),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -336,11 +501,23 @@ class TruckDetailScreen extends StatelessWidget {
                   child: SizedBox(
                     height: 50,
                     child: ElevatedButton.icon(
-                      onPressed: () => _showBookingDialog(context),
-                      icon: const Icon(Icons.check_circle_outline, size: 18),
-                      label: const Text(
-                        'Book Truck Capacity',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                      onPressed: _requestSent
+                          ? null
+                          : () => _showBookingDialog(context),
+                      icon: Icon(
+                        _requestSent
+                            ? Icons.hourglass_top_rounded
+                            : Icons.send_outlined,
+                        size: 18,
+                      ),
+                      label: Text(
+                        _requestSent
+                            ? 'Request Sent (Pending Approval)'
+                            : 'Request Truck Capacity',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryBlue,
@@ -363,20 +540,43 @@ class TruckDetailScreen extends StatelessWidget {
   }
 
   void _showBookingDialog(BuildContext context) {
-    final freightCtrl = TextEditingController();
-    final weightCtrl = TextEditingController();
+    final freightCtrl = TextEditingController(
+      text: truck.minimumPrice != null && truck.minimumPrice! > 0
+          ? truck.minimumPrice!.toStringAsFixed(0)
+          : '',
+    );
+    final weightCtrl = TextEditingController(
+      text: truck.availableCapacity != null && truck.availableCapacity! > 0
+          ? truck.availableCapacity!.toString()
+          : '',
+    );
+    final remarksCtrl = TextEditingController();
 
     Get.defaultDialog(
-      title: 'Confirm Capacity Booking',
+      title: 'Request Truck Capacity',
       titleStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              'Send a booking request to ${truck.companyName ?? "the transporter"}. The booking will be confirmed only after the listing owner accepts.',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF1E40AF)),
+            ),
+          ),
+          const SizedBox(height: 12),
           TextField(
             controller: freightCtrl,
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(
-              labelText: 'Agreed Freight Amount (₹)',
+              labelText: 'Proposed Freight Amount (₹)',
               border: OutlineInputBorder(),
             ),
           ),
@@ -385,44 +585,77 @@ class TruckDetailScreen extends StatelessWidget {
             controller: weightCtrl,
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
-              labelText: 'Cargo Weight (${truck.capacityUnit.name})',
+              labelText: 'Requested Capacity (${truck.capacityUnit.name})',
               border: const OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: remarksCtrl,
+            maxLines: 2,
+            decoration: const InputDecoration(
+              labelText: 'Notes / Pickup Instructions (Optional)',
+              border: OutlineInputBorder(),
             ),
           ),
         ],
       ),
-      textConfirm: 'Confirm Booking',
+      textConfirm: 'Send Booking Request',
+      textCancel: 'Cancel',
       confirmTextColor: Colors.white,
       buttonColor: AppColors.primaryBlue,
       onConfirm: () async {
         final amount = double.tryParse(freightCtrl.text.trim()) ?? 0.0;
         final capacity = double.tryParse(weightCtrl.text.trim()) ?? 0.0;
-        if (amount <= 0) return;
+        if (amount <= 0) {
+          Get.snackbar(
+            'Invalid Freight',
+            'Please enter a valid proposed freight amount.',
+            snackPosition: SnackPosition.BOTTOM,
+          );
+          return;
+        }
 
         Get.back();
-        Get.dialog(const Center(child: CircularProgressIndicator()), barrierDismissible: false);
+        Get.dialog(
+          const Center(child: CircularProgressIndicator()),
+          barrierDismissible: false,
+        );
 
-        final service = MarketplaceService();
+        final svc = service ?? MarketplaceService();
         final booking = MarketplaceBookingModel(
           listingId: truck.listingId,
           vehicleId: truck.vehicleId,
           driverId: truck.driverId,
           agreedFreight: amount,
-          requestedCapacity: capacity,
+          proposedFreight: amount,
+          requestedCapacity: capacity > 0 ? capacity : truck.availableCapacity,
+          capacityUnit: truck.capacityUnit,
+          originCity: truck.currentCity,
+          destinationCity: truck.routeTo,
+          remarks: remarksCtrl.text.trim().isNotEmpty
+              ? remarksCtrl.text.trim()
+              : null,
           paymentTerms: PaymentTermType.ADVANCE_PERCENT,
           advancePercentage: 50,
+          bookingStatus: BookingStatus.PENDING_APPROVAL,
         );
 
-        final success = await service.createBooking(booking);
-        Get.back();
+        final success = await svc.createBooking(booking);
+        if (Get.isDialogOpen ?? false) {
+          Get.back();
+        }
 
         if (success) {
+          if (mounted) {
+            setState(() => _requestSent = true);
+          }
           Get.snackbar(
-            'Truck Capacity Booked!',
-            'Your booking request has been confirmed with ${truck.companyName ?? "transporter"}.',
+            'Booking Request Sent',
+            'Booking request sent. Waiting for transporter approval.',
             snackPosition: SnackPosition.TOP,
-            backgroundColor: const Color(0xFFECFDF5),
-            colorText: const Color(0xFF065F46),
+            backgroundColor: const Color(0xFFFFFBEB),
+            colorText: const Color(0xFF92400E),
           );
         }
       },
@@ -518,12 +751,15 @@ class TruckDetailScreen extends StatelessWidget {
         listingId: truck.listingId,
         participantCompanyId: truck.companyId!,
         participantStaffId: truck.postedByStaffId!,
-        initialMessage: 'Hi, I am inquiring about your truck ${truck.vehicleNumber ?? ""}: stationed at ${truck.currentCity}.',
+        initialMessage:
+            'Hi, I am inquiring about your truck ${truck.vehicleNumber ?? ""}: stationed at ${truck.currentCity}.',
       );
 
       if (!context.mounted) return;
 
-      if (conversation != null && conversation.id != null && conversation.id! > 0) {
+      if (conversation != null &&
+          conversation.id != null &&
+          conversation.id! > 0) {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => MarketplaceChatScreen(
@@ -539,10 +775,7 @@ class TruckDetailScreen extends StatelessWidget {
         );
       }
     } catch (e) {
-      _showChatErrorWithRetry(
-        context,
-        'Unable to initiate chat: $e',
-      );
+      _showChatErrorWithRetry(context, 'Unable to initiate chat: $e');
     }
   }
 

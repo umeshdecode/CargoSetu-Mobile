@@ -70,7 +70,8 @@ class WalletStatementModel {
     return WalletStatementModel(
       balance: bal,
       heldBalance: held,
-      availableBalance: (json['availableBalance'] as num?)?.toDouble() ?? (bal - held),
+      availableBalance:
+          (json['availableBalance'] as num?)?.toDouble() ?? (bal - held),
     );
   }
 }
